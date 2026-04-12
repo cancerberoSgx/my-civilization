@@ -1,0 +1,137 @@
+[
+  {
+    "Terrain": "Grassland",
+    "Food": "2",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": ""
+  },
+  {
+    "Terrain": "Plains",
+    "Food": "1",
+    "Production": "1",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": ""
+  },
+  {
+    "Terrain": "Desert",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": "+25% build time"
+  },
+  {
+    "Terrain": "Tundra",
+    "Food": "1",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": "+25% build time"
+  },
+  {
+    "Terrain": "Snow",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": "+50% build time"
+  },
+  {
+    "Terrain": "Ocean",
+    "Food": "1",
+    "Production": "",
+    "Commerce": "1",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": ""
+  },
+  {
+    "Terrain": "Coast",
+    "Food": 1,
+    "Production": "",
+    "Commerce": 2,
+    "Defense Bonus": "10%",
+    "Movement Cost": "1",
+    "Other": ""
+  },
+  {
+    "Terrain": "Floodplains",
+    "Food": "+3",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "1",
+    "Other": "-0.4 health"
+  },
+  {
+    "Terrain": "Oasis",
+    "Food": "+3",
+    "Production": "",
+    "Commerce": "+2",
+    "Defense Bonus": "",
+    "Movement Cost": "2",
+    "Other": "Fresh water source"
+  },
+  {
+    "Terrain": "Forest",
+    "Food": "",
+    "Production": "+1",
+    "Commerce": "",
+    "Defense Bonus": "50%",
+    "Movement Cost": "2",
+    "Other": "+0.4 health"
+  },
+  {
+    "Terrain": "Jungle",
+    "Food": "-1",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "50%",
+    "Movement Cost": "2",
+    "Other": "-0.25 health"
+  },
+  {
+    "Terrain": "Hill",
+    "Food": "-1",
+    "Production": "+1",
+    "Commerce": "",
+    "Defense Bonus": "25%",
+    "Movement Cost": "2",
+    "Other": ""
+  },
+  {
+    "Terrain": "Peak",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "Impassable",
+    "Other": ""
+  },
+  {
+    "Terrain": "Ice",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Defense Bonus": "",
+    "Movement Cost": "Impassable",
+    "Other": ""
+  },
+  {
+    "Terrain": "Fallout",
+    "Food": "-3",
+    "Production": "-3",
+    "Commerce": "-3",
+    "Defense Bonus": "",
+    "Movement Cost": "2",
+    "Other": "-0.5 health, cannot build improvements"
+  }
+]

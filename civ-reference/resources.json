@@ -1,0 +1,674 @@
+[
+  {
+    "name": "Aluminum",
+    "revealed_by": "Industrialism",
+    "terrain_found_on": "Hills",
+    "terrain_features_found_on": "Plains, desert, tundra",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+3",
+      "commerce": "+1"
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Banana",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Jungle, grassland",
+    "improvement_required": "Plantation",
+    "tech_required_for_improvement": "Calendar",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Grocer (Health)"
+  },
+  {
+    "name": "Clam",
+    "revealed_by": null,
+    "terrain_found_on": "Water",
+    "terrain_features_found_on": "Coast",
+    "improvement_required": "Fishing Boats",
+    "tech_required_for_improvement": "Fishing",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Harbor (Health)"
+  },
+  {
+    "name": "Coal",
+    "revealed_by": "Steam Power",
+    "terrain_found_on": "Hills",
+    "terrain_features_found_on": "Grassland, plains",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+3",
+      "commerce": null
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Copper",
+    "revealed_by": "Bronze Working",
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, plains, desert, tundra, snow",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+3",
+      "commerce": null
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Corn",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands, no riversides",
+    "terrain_features_found_on": "Grassland",
+    "improvement_required": "Farm",
+    "tech_required_for_improvement": "Agriculture",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Granary (Health)"
+  },
+  {
+    "name": "Cow",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, plains",
+    "improvement_required": "Pasture",
+    "tech_required_for_improvement": "Animal Husbandry",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+1",
+      "production": "+2",
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Supermarket (Health)"
+  },
+  {
+    "name": "Crab",
+    "revealed_by": null,
+    "terrain_found_on": "Water",
+    "terrain_features_found_on": "Coast",
+    "improvement_required": "Fishing Boats",
+    "tech_required_for_improvement": "Fishing",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Harbor (Health)"
+  },
+  {
+    "name": "Deer",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands",
+    "terrain_features_found_on": "Tundra, forest",
+    "improvement_required": "Camp",
+    "tech_required_for_improvement": "Hunting",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Supermarket (Health)"
+  },
+  {
+    "name": "Dye",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Jungle, grassland",
+    "improvement_required": "Plantation",
+    "tech_required_for_improvement": "Calendar",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": null,
+      "commerce": "+4"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Theater, not Hippodrome (Happy)"
+  },
+  {
+    "name": "Fish",
+    "revealed_by": null,
+    "terrain_found_on": "Water",
+    "terrain_features_found_on": "Ocean, coast",
+    "improvement_required": "Fishing Boats",
+    "tech_required_for_improvement": "Fishing",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+3",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Harbor (Health)"
+  },
+  {
+    "name": "Fur",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands",
+    "terrain_features_found_on": "Tundra, snow, forest",
+    "improvement_required": "Camp",
+    "tech_required_for_improvement": "Hunting",
+    "obsolete_with": "Plastics",
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": null,
+      "commerce": "+3"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Market (Happy)"
+  },
+  {
+    "name": "Gems",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands",
+    "terrain_features_found_on": "Jungle, grassland",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+1",
+      "commerce": "+5"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Forge (Happy)"
+  },
+  {
+    "name": "Gold",
+    "revealed_by": null,
+    "terrain_found_on": "Hills",
+    "terrain_features_found_on": "Plains, desert",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+1",
+      "commerce": "+6"
+    },
+    "benefits_with_improvement": "+1 Happiness, Strategic",
+    "building_further_benefit": "Forge (Happy)"
+  },
+  {
+    "name": "Horse",
+    "revealed_by": "Animal Husbandry",
+    "terrain_found_on": "Flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, plains, tundra",
+    "improvement_required": "Pasture",
+    "tech_required_for_improvement": "Animal Husbandry",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+2",
+      "commerce": "+1"
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": "Byzantine Hippodrome (Happy)"
+  },
+  {
+    "name": "Incense",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Desert",
+    "improvement_required": "Plantation",
+    "tech_required_for_improvement": "Calendar",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": null,
+      "commerce": "+5"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Super-Temple (Happy)"
+  },
+  {
+    "name": "Iron",
+    "revealed_by": "Iron Working",
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, plains, desert, tundra, snow",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+3",
+      "commerce": null
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Ivory",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Plains, jungle, grassland",
+    "improvement_required": "Camp",
+    "tech_required_for_improvement": "Hunting",
+    "obsolete_with": "Industrialism",
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+1",
+      "commerce": "+1"
+    },
+    "benefits_with_improvement": "+1 Happiness, Strategic",
+    "building_further_benefit": "Market (Happy)"
+  },
+  {
+    "name": "Marble",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Plains, tundra, snow",
+    "improvement_required": "Quarry",
+    "tech_required_for_improvement": "Masonry",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+1",
+      "commerce": "+2"
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Oil",
+    "revealed_by": "Scientific Method",
+    "terrain_found_on": "Flatlands, no riversides",
+    "terrain_features_found_on": "Desert, tundra, snow, ocean, jungle, grassland",
+    "improvement_required": "Oil Well, Offshore Platform",
+    "tech_required_for_improvement": "Combustion",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+2",
+      "commerce": "+1"
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Pig",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, jungle",
+    "improvement_required": "Pasture",
+    "tech_required_for_improvement": "Animal Husbandry",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+3",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Supermarket (Health)"
+  },
+  {
+    "name": "Rice",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, jungle",
+    "improvement_required": "Farm",
+    "tech_required_for_improvement": "Agriculture",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Granary (Health)"
+  },
+  {
+    "name": "Sheep",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, plains",
+    "improvement_required": "Pasture",
+    "tech_required_for_improvement": "Animal Husbandry",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": "+1"
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Supermarket (Health)"
+  },
+  {
+    "name": "Silk",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Forest, grassland, plains",
+    "improvement_required": "Plantation",
+    "tech_required_for_improvement": "Calendar",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": null,
+      "commerce": "+3"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Market (Happy)"
+  },
+  {
+    "name": "Silver",
+    "revealed_by": null,
+    "terrain_found_on": "Hills",
+    "terrain_features_found_on": "Tundra, snow",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+1",
+      "commerce": "+4"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Forge (Happy)"
+  },
+  {
+    "name": "Spices",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Jungle, forest, grassland, plains",
+    "improvement_required": "Plantation",
+    "tech_required_for_improvement": "Calendar",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": "+1",
+      "production": null,
+      "commerce": "+2"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Grocer (Health)"
+  },
+  {
+    "name": "Stone",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Plains, desert",
+    "improvement_required": "Quarry",
+    "tech_required_for_improvement": "Masonry",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": "+1",
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+2",
+      "commerce": null
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Sugar",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands",
+    "terrain_features_found_on": "Jungle, grassland",
+    "improvement_required": "Plantation",
+    "tech_required_for_improvement": "Calendar",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+1",
+      "production": null,
+      "commerce": "+1"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Grocer (Health)"
+  },
+  {
+    "name": "Uranium",
+    "revealed_by": "Physics",
+    "terrain_found_on": "Hills, flatlands, no riversides",
+    "terrain_features_found_on": "Grassland, plains, desert, tundra, snow, jungle, forest",
+    "improvement_required": "Mine",
+    "tech_required_for_improvement": "Mining",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": null,
+      "commerce": "+3"
+    },
+    "benefits_with_improvement": "Strategic",
+    "building_further_benefit": null
+  },
+  {
+    "name": "Whale",
+    "revealed_by": null,
+    "terrain_found_on": "Water",
+    "terrain_features_found_on": "Ocean",
+    "improvement_required": "Whaling Boat",
+    "tech_required_for_improvement": "Optics",
+    "obsolete_with": "Combustion",
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": null,
+      "production": "+1",
+      "commerce": "+2"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Market (Happy)"
+  },
+  {
+    "name": "Wheat",
+    "revealed_by": null,
+    "terrain_found_on": "Flatlands, no riversides",
+    "terrain_features_found_on": "Plains",
+    "improvement_required": "Farm",
+    "tech_required_for_improvement": "Agriculture",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": "+1",
+      "production": null,
+      "commerce": null
+    },
+    "improved_yield": {
+      "food": "+2",
+      "production": null,
+      "commerce": null
+    },
+    "benefits_with_improvement": "+1 Health",
+    "building_further_benefit": "Granary (Health)"
+  },
+  {
+    "name": "Wine",
+    "revealed_by": null,
+    "terrain_found_on": "Hills, flatlands",
+    "terrain_features_found_on": "Plains",
+    "improvement_required": "Winery",
+    "tech_required_for_improvement": "Monarchy",
+    "obsolete_with": null,
+    "base_yield_bonus": {
+      "food": null,
+      "production": null,
+      "commerce": "+1"
+    },
+    "improved_yield": {
+      "food": "+1",
+      "production": null,
+      "commerce": "+2"
+    },
+    "benefits_with_improvement": "+1 Happiness",
+    "building_further_benefit": "Grocer (Health)"
+  }
+]

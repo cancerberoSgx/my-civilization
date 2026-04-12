@@ -1,0 +1,485 @@
+[
+  {
+    "Name": "Camp",
+    "Type": "improvement",
+    "Tech Required": "Hunting",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Deer",
+    "Type": "resource",
+    "Improvement": "Camp",
+    "Tech Required": "",
+    "Food": "+1, +2 with camp",
+    "Production": "",
+    "Commerce": "",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Fur",
+    "Type": "resource",
+    "Improvement": "Camp",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+1, +3 with camp",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Ivory",
+    "Type": "resource",
+    "Improvement": "Camp",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "+1, +1 with camp",
+    "Commerce": "+1 with camp",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Cottage",
+    "Type": "improvement",
+    "Tech Required": "Pottery",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+1 gold",
+    "Other": "Becomes Hamlet in 10 turns when worked by city"
+  },
+  {
+    "Name": "Hamlet",
+    "Type": "resource",
+    "Improvement": "Cottage",
+    "Tech Required": "Pottery",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+2 gold",
+    "Other": "Becomes Village in 20 turns when worked by city"
+  },
+  {
+    "Name": "Village",
+    "Type": "resource",
+    "Improvement": "Cottage",
+    "Tech Required": "Pottery",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+3, +1 with Printing Press",
+    "Other": "Becomes Town in 40 turns when worked by city"
+  },
+  {
+    "Name": "Town",
+    "Type": "resource",
+    "Improvement": "Cottage",
+    "Tech Required": "Pottery",
+    "Food": "",
+    "Production": "+1 with Universal Sufferage",
+    "Commerce": "+4, +1 with Printing Press, +2 with Free Speech",
+    "Other": ""
+  },
+  {
+    "Name": "Farm",
+    "Type": "improvement",
+    "Tech Required": "Agriculture",
+    "Food": "+1, +1 with Biology",
+    "Production": "",
+    "Commerce": "",
+    "Other": "Carries irrigation (with Civil Service)"
+  },
+  {
+    "Name": "Corn",
+    "Type": "resource",
+    "Improvement": "Farm",
+    "Tech Required": "",
+    "Food": "+1, +2 with Farm",
+    "Production": "",
+    "Commerce": "",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Rice",
+    "Type": "resource",
+    "Improvement": "Farm",
+    "Tech Required": "",
+    "Food": "+1, +1 with Farm",
+    "Production": "",
+    "Commerce": "",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Wheat",
+    "Type": "resource",
+    "Improvement": "Farm",
+    "Tech Required": "",
+    "Food": "+1, +2 with Farm",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Fort",
+    "Type": "improvement",
+    "Tech Required": "Mathematics",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": "+25% defense, act as a city for combat purposes, can be built over forest"
+  },
+  {
+    "Name": "Forest Preserve",
+    "Type": "improvement",
+    "Tech Required": "Scientific Method",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+1 next to rivers, +2 with environmentalism",
+    "Other": "+1 happy, more change terrain spread"
+  },
+  {
+    "Name": "Lumbermill",
+    "Type": "improvement",
+    "Tech Required": "Replaceable Parts",
+    "Food": "",
+    "Production": "+1, +1 with Railroad",
+    "Commerce": "+1 next to rivers",
+    "Other": ""
+  },
+  {
+    "Name": "Mine",
+    "Type": "improvement",
+    "Tech Required": "Mining",
+    "Food": "",
+    "Production": "+2, +1 with Railroad",
+    "Commerce": "",
+    "Other": "Small chance to discover metals"
+  },
+  {
+    "Name": "Aluminum",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "Industrialism",
+    "Food": "",
+    "Production": "+1, +3 with Mine",
+    "Commerce": "+1 with Mine",
+    "Other": ""
+  },
+  {
+    "Name": "Coal",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "Steam Power",
+    "Food": "",
+    "Production": "+1, +3 with Mine",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Copper",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "Bronze Working",
+    "Food": "",
+    "Production": "+1, +3 with Mine",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Iron",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "Iron Working",
+    "Food": "",
+    "Production": "+1, +3 with Mine",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Uranium",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "Physics",
+    "Food": "",
+    "Production": "+2 with Mine",
+    "Commerce": "+3 with Mine",
+    "Other": ""
+  },
+  {
+    "Name": "Gems",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "+1 with Mine",
+    "Commerce": "+1, +5 with Mine",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Gold",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "+1 with Mine",
+    "Commerce": "+1, +6 with Mine",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Silver",
+    "Type": "resource",
+    "Improvement": "Mine",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "+1 with Mine",
+    "Commerce": "+1, +4 with Mine",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Offshore Platform",
+    "Type": "improvement",
+    "Tech Required": "Plastics",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Oil",
+    "Type": "resource",
+    "Improvement": "Offshore Platform",
+    "Tech Required": "Scientific Method",
+    "Food": "",
+    "Production": "+1, +2 with Offshore Platform",
+    "Commerce": "+1 with Offshore Platform",
+    "Other": ""
+  },
+  {
+    "Name": "Pasture",
+    "Type": "improvement",
+    "Tech Required": "Animal Husbandry",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Horse",
+    "Type": "resource",
+    "Improvement": "Pasture",
+    "Tech Required": "Animal Husbandry",
+    "Food": "",
+    "Production": "+1, +2 with Pasture",
+    "Commerce": "+1 with Pasture",
+    "Other": ""
+  },
+  {
+    "Name": "Cow",
+    "Type": "resource",
+    "Improvement": "Pasture",
+    "Tech Required": "",
+    "Food": "+1, +1 with Pasture",
+    "Production": "+2 with Pasture",
+    "Commerce": "",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Pig",
+    "Type": "resource",
+    "Improvement": "Pasture",
+    "Tech Required": "",
+    "Food": "+1, +3 with Pasture",
+    "Production": "",
+    "Commerce": "",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Sheep",
+    "Type": "resource",
+    "Improvement": "Pasture",
+    "Tech Required": "",
+    "Food": "+1, +2 with Pasture",
+    "Production": "",
+    "Commerce": "+1 with Pasture",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Plantation",
+    "Type": "improvement",
+    "Tech Required": "Calendar",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Banana",
+    "Type": "resource",
+    "Improvement": "Plantation",
+    "Tech Required": "",
+    "Food": "+1, +2 with Plantation",
+    "Production": "",
+    "Commerce": "",
+    "Other": "+1 health"
+  },
+  {
+    "Name": "Dye",
+    "Type": "resource",
+    "Improvement": "Plantation",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+1, +4 with Plantation",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Incense",
+    "Type": "resource",
+    "Improvement": "Plantation",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+1, +5 with Plantation",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Silk",
+    "Type": "resource",
+    "Improvement": "Plantation",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "",
+    "Commerce": "+1, +3 with Plantation",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Spices",
+    "Type": "resource",
+    "Improvement": "Plantation",
+    "Tech Required": "",
+    "Food": "+1 with Plantation",
+    "Production": "",
+    "Commerce": "+1, +2 with Plantation",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Sugar",
+    "Type": "resource",
+    "Improvement": "Plantation",
+    "Tech Required": "",
+    "Food": "+1, +1 with Plantation",
+    "Production": "",
+    "Commerce": "+1 with Plantation",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Quarry",
+    "Type": "improvement",
+    "Tech Required": "Masonry",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Marble",
+    "Type": "resource",
+    "Improvement": "Quarry",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "+1, +1 with Quarry, +1 with railroad",
+    "Commerce": "+2 with Quarry",
+    "Other": "Doubles production speed of wonders"
+  },
+  {
+    "Name": "Stone",
+    "Type": "resource",
+    "Improvement": "Quarry",
+    "Tech Required": "",
+    "Food": "",
+    "Production": "+1, +2 with Quarry, +1 with railroad",
+    "Commerce": "",
+    "Other": "Doubles production speed of wonders"
+  },
+  {
+    "Name": "Watermill",
+    "Type": "improvement",
+    "Tech Required": "Machinery",
+    "Food": "+1 with State Property",
+    "Production": "+1, +1 with Replaceable Parts",
+    "Commerce": "+2 with Electricity",
+    "Other": ""
+  },
+  {
+    "Name": "Well",
+    "Type": "improvement",
+    "Tech Required": "Combustion",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Oil",
+    "Type": "resource",
+    "Improvement": "Well",
+    "Tech Required": "Scientific Method",
+    "Food": "",
+    "Production": "+1, +2 with Well",
+    "Commerce": "+1 with Well",
+    "Other": ""
+  },
+  {
+    "Name": "Whaling Boats",
+    "Type": "improvement",
+    "Tech Required": "Optics",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Whale",
+    "Type": "resource",
+    "Improvement": "Whaling Boats",
+    "Tech Required": "",
+    "Food": "+1",
+    "Production": "+1 with Whaling Boats",
+    "Commerce": "+2 with Whaling Boats",
+    "Other": "+1 happy face"
+  },
+  {
+    "Name": "Windmill",
+    "Type": "improvement",
+    "Tech Required": "Machinery",
+    "Food": "+1",
+    "Production": "+1 with Replaceable Parts",
+    "Commerce": "+1, +1 with Electricity",
+    "Other": ""
+  },
+  {
+    "Name": "Winery",
+    "Type": "improvement",
+    "Tech Required": "Monarchy",
+    "Food": "",
+    "Production": "",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Workshop",
+    "Type": "improvement",
+    "Tech Required": "Metal Casting",
+    "Food": "-1, +1 with State Property",
+    "Production": "+1, +1 with Guilds, +1 with Replaceable Parts",
+    "Commerce": "",
+    "Other": ""
+  },
+  {
+    "Name": "Wines",
+    "Type": "resource",
+    "Improvement": "Workshop",
+    "Tech Required": "",
+    "Food": "+1 with Winery",
+    "Production": "",
+    "Commerce": "+1, +2 with Winery",
+    "Other": "+1 happy face"
+  }
+]
