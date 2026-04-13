@@ -220,3 +220,20 @@ on ai player turn, move all units randomly
 on human turn, for each of its units, ask the player to move. Accomplish this by first focusing the unit in the board and make it selected. User can right click the map to move it to a tile. 
 for both players, only when all units mvoe there's a "next turn" action. AI execute it automatically when all units moved. human player must click the button manually
 
+
+
+# image generation tests:
+
+given units data in notes/civ-reference/units-and-descriptions.json create a script scripts/src/generate-unit-images.ts which:
+ * is based on scripts/src/gemini-image-generation/gemini-image-generation.ts to generate images using gemini
+ * for each unit in notes/civ-reference/units-and-descriptions.json, it uses its "image-description" field to create a png image on scripts/tmp_units/$UNIT_NAME.png
+ * runs the following shell script to generate a transparent background version and saves it to scripts/tmp_units/$UNIT_NAME-transparent.png
+ * the script will run in the context of the "scripts" folder which is a typescript+node.js project already
+
+p2: 
+in scripts/src/generate-unit-images.ts "Strip green background" you don't use BG_COLOR variable but instead get the real background color using this command `convert input2.png -format "%[pixel:p{0,0}]" info:`. In summary you must execute these two commands:
+
+bg=$(convert input2.png -format "%[pixel:p{0,0}]" info:)
+convert input2.png -fuzz 20% -transparent "$bg" output2.png
+
+in scripts/src/generate-unit-images.ts, implement the function applyTransparencyAgain() which will re-generate x-transparent.png files by executing the imagemagick commands again. The script will execute only that funcion if --regenerate-transparency is passed in cli command
