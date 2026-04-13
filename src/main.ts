@@ -4,7 +4,7 @@
  * 2. Init PixiJS.
  * 3. Create SharedArrayBuffers.
  * 4. Kick off mapgen worker.
- * 5. On worker 'done': build viewport + renderers, start game loop.
+ * 5. On worker 'done': build viewport + renderers, create Game, start loop.
  */
 import { createRoot } from 'react-dom/client'
 import { createElement } from 'react'
@@ -13,7 +13,8 @@ import { Application } from 'pixi.js'
 import {
   MAP_WIDTH, MAP_HEIGHT, TILE_SIZE,
   TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT,
-  UNIT_STRIDE, MAX_UNITS, MIN_ZOOM, MAX_ZOOM,
+  UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF,
+  MAX_UNITS, MIN_ZOOM, MAX_ZOOM,
 } from './shared/constants'
 import { TerrainType, FeatureType, ResourceType, ImprovementType } from './shared/types'
 import type { MapgenRequest, MapgenResponse } from './shared/types'
@@ -28,8 +29,9 @@ import { TileRenderer }       from './renderer/TileRenderer'
 import { UnitRenderer }       from './renderer/UnitRenderer'
 import { CameraViewport }     from './renderer/CameraViewport'
 
-import { useGameStore } from './ui/store'
-import { App }          from './ui/App'
+import { Game }          from './game/Game'
+import { useGameStore }  from './ui/store'
+import { App }           from './ui/App'
 
 import MapgenWorker from './workers/mapgen.worker?worker'
 
@@ -114,14 +116,16 @@ worker.onmessage = (e: MessageEvent<MapgenResponse>) => {
   viewport.addChild(tileRenderer.featureLayer)
   viewport.addChild(tileRenderer.resourceLayer)
   viewport.addChild(tileRenderer.improveLayer)
+  viewport.addChild(tileRenderer.moveLayer)      // valid-move green overlays
   viewport.addChild(unitRenderer.layer)
-  viewport.addChild(tileRenderer.highlightLayer)
+  viewport.addChild(tileRenderer.highlightLayer) // hover/select/activeUnit border on top
 
   unitRenderer.setBuffers(unitBuffer, unitCount)
   tileRenderer.initialUpdate(viewport)
 
-  // ── Tile / unit info helpers ───────────────────────────────────────────────
+  // ── Tile info lookup helpers ──────────────────────────────────────────────
   const tileBytes = new Uint8Array(tileBuffer)
+  const unitView  = new DataView(unitBuffer)
 
   const featureName: Record<number, string> = {
     [FeatureType.None]:       'None',
@@ -131,12 +135,78 @@ worker.onmessage = (e: MessageEvent<MapgenResponse>) => {
     [FeatureType.Oasis]:      'Oasis',
   }
 
-  function handleClick(clientX: number, clientY: number): void {
-    const w  = viewport.toWorld(clientX, clientY)
+  // ── Game instance ──────────────────────────────────────────────────────────
+  const game = new Game(unitBuffer, tileBuffer, unitCount)
+
+  game.cb = {
+    onTurnStart(player, turn, pendingCount) {
+      const isHuman   = player.isHuman
+      const phaseLabel = isHuman ? 'Your Turn' : 'AI is thinking…'
+      gs().setTurnState(player, turn, pendingCount, false, phaseLabel)
+      // Force unit renderer to refresh positions (important after AI moves all units)
+      unitRenderer.triggerUpdate()
+    },
+
+    onActiveUnitChanged(uid) {
+      if (uid < 0) {
+        tileRenderer.setActiveUnitTile(-1, -1)
+        unitRenderer.setActiveUnit(-1)
+        return
+      }
+      const off = uid * UNIT_STRIDE
+      const tx  = unitView.getUint16(off + UNIT_X_OFF, true)
+      const ty  = unitView.getUint16(off + UNIT_Y_OFF, true)
+      tileRenderer.setActiveUnitTile(tx, ty)
+      unitRenderer.setActiveUnit(uid)
+      // Pan camera to keep the active unit visible
+      viewport.moveCenter(tx * TILE_SIZE + TILE_SIZE / 2, ty * TILE_SIZE + TILE_SIZE / 2)
+    },
+
+    onUnitMoved(uid, _fx, _fy, _tx, _ty) {
+      unitRenderer.refreshUnit(uid)
+    },
+
+    onValidMovesChanged(moves) {
+      tileRenderer.setValidMoves(moves)
+    },
+
+    onAllUnitsDone() {
+      gs().setCanEndTurn(true)
+      gs().setPendingCount(0)
+    },
+  }
+
+  // Wire End-Turn / Skip actions into the store so UI buttons can call them
+  gs().setGameActions(
+    () => game.endTurn(),
+    () => game.skipActiveUnit(),
+    () => game.skipAllPending(),
+  )
+
+  // ── Canvas input events ────────────────────────────────────────────────────
+  const canvas = app.canvas as HTMLCanvasElement
+
+  // Track pointer-down position to distinguish click from drag
+  let ptrDownX = 0, ptrDownY = 0, ptrDownBtn = 0
+  canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+    ptrDownX = e.clientX; ptrDownY = e.clientY; ptrDownBtn = e.button
+  })
+
+  canvas.addEventListener('pointerup', (e: PointerEvent) => {
+    if (Math.abs(e.clientX - ptrDownX) > 6 || Math.abs(e.clientY - ptrDownY) > 6) return
+
+    const w  = viewport.toWorld(e.clientX, e.clientY)
     const tx = Math.floor(w.x / TILE_SIZE)
     const ty = Math.floor(w.y / TILE_SIZE)
     if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return
 
+    if (ptrDownBtn === 2) {
+      // Right-click: attempt to move active unit to this tile
+      game.requestMove(tx, ty)
+      return
+    }
+
+    // Left-click: select tile + unit for info panel
     const uid = unitRenderer.unitAt(tx, ty)
     unitRenderer.selectUnit(uid)
     gs().setSelectedUnit(uid >= 0 ? unitRenderer.getUnitInfo(uid) : null)
@@ -144,47 +214,41 @@ worker.onmessage = (e: MessageEvent<MapgenResponse>) => {
     tileRenderer.setSelected(tx, ty)
 
     const base      = (ty * MAP_WIDTH + tx) * TILE_STRIDE
-    const terrainId = tileBytes[base + TILE_TERRAIN]     as TerrainType
+    const terrainId = tileBytes[base + TILE_TERRAIN] as TerrainType
     const td        = TERRAIN_MAP.get(terrainId)!
     gs().setSelectedTile({
       x:           tx,
       y:           ty,
       terrain:     td.name,
       feature:     featureName[tileBytes[base + TILE_FEATURE]]  ?? 'None',
-      resource:    RESOURCE_MAP.get(tileBytes[base + TILE_RESOURCE] as ResourceType)?.name    ?? 'None',
+      resource:    RESOURCE_MAP.get(tileBytes[base + TILE_RESOURCE]   as ResourceType)?.name    ?? 'None',
       improvement: IMPROVEMENT_MAP.get(tileBytes[base + TILE_IMPROVEMENT] as ImprovementType)?.name ?? 'None',
       food:        td.food,
       production:  td.production,
       commerce:    td.commerce,
       defense:     td.defense,
     })
-  }
-
-  // ── Canvas input events (raw, not PixiJS) ─────────────────────────────────
-  // CameraViewport's own pointerdown starts drag capture, so we listen to the
-  // same canvas for click detection and hover — events fire in DOM order.
-  const canvas = app.canvas as HTMLCanvasElement
-
-  let ptrDownX = 0, ptrDownY = 0
-  canvas.addEventListener('pointerdown', (e: PointerEvent) => {
-    ptrDownX = e.clientX; ptrDownY = e.clientY
   })
-  canvas.addEventListener('pointerup', (e: PointerEvent) => {
-    if (Math.abs(e.clientX - ptrDownX) > 6 || Math.abs(e.clientY - ptrDownY) > 6) return
-    handleClick(e.clientX, e.clientY)
-  })
+
   canvas.addEventListener('pointermove', (e: PointerEvent) => {
     const w = viewport.toWorld(e.clientX, e.clientY)
     tileRenderer.setHover(Math.floor(w.x / TILE_SIZE), Math.floor(w.y / TILE_SIZE))
   })
 
-  // ── Keyboard ─────────────────────────────────────────────────────────────
+  // ── Keyboard ──────────────────────────────────────────────────────────────
   const keys = new Set<string>()
   window.addEventListener('keydown', ev => {
     keys.add(ev.key)
     if (ev.key === 'Escape') {
       gs().setSelectedTile(null); gs().setSelectedUnit(null)
       tileRenderer.setSelected(-1, -1); unitRenderer.selectUnit(-1)
+    }
+    if (ev.key === ' ') {
+      ev.preventDefault()   // prevent page scroll
+      game.skipActiveUnit()
+    }
+    if (ev.key === 'Enter') {
+      if (gs().canEndTurn) game.endTurn()
     }
   })
   window.addEventListener('keyup', ev => keys.delete(ev.key))
@@ -205,4 +269,7 @@ worker.onmessage = (e: MessageEvent<MapgenResponse>) => {
   })
 
   gs().setLoading(false, 100, '')
+
+  // ── Start game! ───────────────────────────────────────────────────────────
+  game.start()
 }

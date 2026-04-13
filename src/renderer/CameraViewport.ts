@@ -70,6 +70,7 @@ export class CameraViewport extends Container {
     this.x = this.screenWidth  / 2 - worldX * this.scale.x
     this.y = this.screenHeight / 2 - worldY * this.scale.y
     this._clamp()
+    this.emit('moved')
     return this
   }
 
@@ -156,7 +157,8 @@ export class CameraViewport extends Container {
 
     // ── Pointer drag ────────────────────────────────────────────────────────
     canvas.addEventListener('pointerdown', (e: PointerEvent) => {
-      // Left (0), middle (1), or right (2) button starts drag
+      // Only left-click (button 0) drags; right-click is used for game actions
+      if (e.button !== 0) return
       this.isDragging  = true
       this.dragLastX   = e.clientX
       this.dragLastY   = e.clientY

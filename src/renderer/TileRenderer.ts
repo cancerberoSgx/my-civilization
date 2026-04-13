@@ -11,6 +11,8 @@
  *   resourceLayer – resource icon badges
  *   improveLayer  – improvement overlays
  *   highlightLayer– hover / selection frames
+ *   moveLayer     – valid-move green overlays (game turn logic)
+ *   activeLayer   – cyan border on the currently active unit's tile
  */
 import { Container, Sprite, type Texture } from 'pixi.js'
 import type { CameraViewport } from './CameraViewport'
@@ -36,11 +38,14 @@ const PAD = 3  // extra tiles around the visible area
 
 export class TileRenderer {
   // layer containers added to viewport
-  readonly terrainLayer  = new Container()
-  readonly featureLayer  = new Container()
-  readonly resourceLayer = new Container()
-  readonly improveLayer  = new Container()
+  readonly terrainLayer   = new Container()
+  readonly featureLayer   = new Container()
+  readonly resourceLayer  = new Container()
+  readonly improveLayer   = new Container()
+  /** Added ABOVE unit layer so it renders on top */
   readonly highlightLayer = new Container()
+  /** Valid-move green overlays — sits between improve and unit layers */
+  readonly moveLayer      = new Container()
 
   // key = tileIndex (y * MAP_WIDTH + x)
   private active = new Map<number, TileRecord>()
@@ -57,6 +62,12 @@ export class TileRenderer {
   private selectedTile = -1
   private hoveredTile  = -1
 
+  // Valid-move overlays (pool + active list)
+  private moveSprites:       Sprite[] = []
+  private activeMoveSprites: Sprite[] = []
+  // Active-unit tile highlight (single sprite)
+  private activeUnitSprite:  Sprite
+
   // Tile data view
   private tiles: Uint8Array
 
@@ -69,12 +80,19 @@ export class TileRenderer {
   ) {
     this.tiles = new Uint8Array(tileBuffer)
 
-    // Hover / select overlays live in a separate layer
+    // Hover / select overlays live in highlightLayer
     this.hoverSprite  = new Sprite(tf.hover)
     this.selectSprite = new Sprite(tf.select)
     this.hoverSprite.visible  = false
     this.selectSprite.visible = false
     this.highlightLayer.addChild(this.hoverSprite, this.selectSprite)
+
+    // Active-unit border (cyan, shows whose turn it is)
+    this.activeUnitSprite = new Sprite(tf.activeUnit)
+    this.activeUnitSprite.width   = TILE_SIZE
+    this.activeUnitSprite.height  = TILE_SIZE
+    this.activeUnitSprite.visible = false
+    this.moveLayer.addChild(this.activeUnitSprite)
 
     // Wire viewport events
     viewport.on('moved',  () => this.update(viewport))
@@ -116,6 +134,38 @@ export class TileRenderer {
     this.selectedTile = idx
     this.selectSprite.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE)
     this.selectSprite.visible = true
+  }
+
+  /**
+   * Show green overlays on all valid move destinations.
+   * Pass an empty set to clear them.
+   */
+  setValidMoves(moves: ReadonlySet<number>): void {
+    // Recycle active sprites back to pool
+    for (const s of this.activeMoveSprites) {
+      s.visible = false
+      this.moveSprites.push(s)
+    }
+    this.activeMoveSprites = []
+
+    for (const key of moves) {
+      const tx = key % MAP_WIDTH
+      const ty = Math.floor(key / MAP_WIDTH)
+      const s  = this._getMoveSprite()
+      s.position.set(tx * TILE_SIZE, ty * TILE_SIZE)
+      s.visible = true
+      this.activeMoveSprites.push(s)
+    }
+  }
+
+  /** Highlight the tile of the currently active (focused) unit. */
+  setActiveUnitTile(tileX: number, tileY: number): void {
+    if (tileX < 0 || tileY < 0) {
+      this.activeUnitSprite.visible = false
+      return
+    }
+    this.activeUnitSprite.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE)
+    this.activeUnitSprite.visible = true
   }
 
   /** Returns terrain type at tile, or -1 if out of range. */
@@ -232,6 +282,17 @@ export class TileRenderer {
     // Always reset size — texture swap can change natural dimensions
     s.width  = TILE_SIZE
     s.height = TILE_SIZE
+    return s
+  }
+
+  private _getMoveSprite(): Sprite {
+    if (this.moveSprites.length > 0) {
+      return this.moveSprites.pop()!
+    }
+    const s = new Sprite(this.tf.validMove)
+    s.width  = TILE_SIZE
+    s.height = TILE_SIZE
+    this.moveLayer.addChild(s)
     return s
   }
 }

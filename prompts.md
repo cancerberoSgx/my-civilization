@@ -203,3 +203,20 @@ Rsepoinse:
 
 # first map impl: 
 could you please implement it using a few terrains, units. By default use a 500x500 map with random units, terrain, resources, improvements, units so I can test it  performance. I should be able to zoom in-out, scroll vertical and horizontal, select units, get terrain info 
+
+
+# players
+
+context:
+this is a civilization like game, so each unit belongs to a player. Players move their units turn based, in order
+A game which includes N players. 
+Some players can be human, meaning user need to move their units, and some players can be AI (moved from algorithms automatically)
+tasks:
+implement the concept of game and player
+assign each unit to a player
+to simplify all units can move only 1 tile on each turn _ in the future movement each unit have movement restrictions
+by default start a game with two players, one human and one ai
+on ai player turn, move all units randomly
+on human turn, for each of its units, ask the player to move. Accomplish this by first focusing the unit in the board and make it selected. User can right click the map to move it to a tile. 
+for both players, only when all units mvoe there's a "next turn" action. AI execute it automatically when all units moved. human player must click the button manually
+

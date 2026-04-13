@@ -30,6 +30,8 @@ export class UnitRenderer {
 
   /** Currently selected unit id (-1 if none) */
   private selectedId = -1
+  /** Currently active (game-focused) unit id (-1 if none) */
+  private activeId   = -1
 
   constructor(
     private utf: UnitTextureFactory,
@@ -85,6 +87,31 @@ export class UnitRenderer {
     this.refreshHighlights()
   }
 
+  /** Mark the game-focused (active turn) unit. Pass -1 to clear. */
+  setActiveUnit(id: number): void {
+    this.activeId = id
+    this.refreshHighlights()
+  }
+
+  /**
+   * Reposition one unit's sprite after it moved.
+   * O(1) — just updates the existing sprite if it's currently visible.
+   * Units that move off-screen are cleaned up on the next viewport event.
+   */
+  refreshUnit(id: number): void {
+    const sprite = this.active.get(id)
+    if (!sprite || !this.unitView) return
+    const off = id * UNIT_STRIDE
+    const tx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
+    const ty  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    sprite.position.set(tx * TILE_SIZE + BADGE_OFFSET, ty * TILE_SIZE + BADGE_OFFSET)
+  }
+
+  /** Force a full viewport cull + re-acquire cycle (used after AI turn). */
+  triggerUpdate(): void {
+    this.update()
+  }
+
   private update(): void {
     if (!this.unitView) return
 
@@ -128,17 +155,27 @@ export class UnitRenderer {
       sprite.width  = BADGE
       sprite.height = BADGE
       sprite.visible = true
-      sprite.alpha   = id === this.selectedId ? 1.0 : 0.92
-      // Yellow tint for selected
-      sprite.tint    = id === this.selectedId ? 0xffff88 : 0xffffff
+      this._applyTint(id, sprite)
       this.active.set(id, sprite)
+    }
+  }
+
+  private _applyTint(id: number, sprite: Sprite): void {
+    if (id === this.activeId) {
+      sprite.tint  = 0x88ffff   // cyan — game-focused unit
+      sprite.alpha = 1.0
+    } else if (id === this.selectedId) {
+      sprite.tint  = 0xffff88   // yellow — click-selected
+      sprite.alpha = 1.0
+    } else {
+      sprite.tint  = 0xffffff
+      sprite.alpha = 0.92
     }
   }
 
   private refreshHighlights(): void {
     for (const [id, sprite] of this.active) {
-      sprite.tint  = id === this.selectedId ? 0xffff88 : 0xffffff
-      sprite.alpha = id === this.selectedId ? 1.0 : 0.92
+      this._applyTint(id, sprite)
     }
   }
 

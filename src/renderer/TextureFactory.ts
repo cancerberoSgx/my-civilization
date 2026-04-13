@@ -28,8 +28,10 @@ export class TextureFactory {
   readonly feature     = new Map<FeatureType,     Texture>()
   readonly resource    = new Map<ResourceType,    Texture>()
   readonly improvement = new Map<ImprovementType, Texture>()
-  readonly hover:   Texture
-  readonly select:  Texture
+  readonly hover:      Texture
+  readonly select:     Texture
+  readonly validMove:  Texture   // green overlay for reachable tiles
+  readonly activeUnit: Texture   // pulsing border for focused unit tile
 
   constructor(renderer: Renderer) {
     // ── Terrain (solid colour + subtle edge shading) ───────────────────────
@@ -156,6 +158,21 @@ export class TextureFactory {
       const g = new Graphics()
       g.rect(1, 1, TS - 2, TS - 2).stroke({ color: 0xffffff, width: 1.5, alpha: 0.55 })
       this.hover = capture(renderer, g)
+    }
+
+    // ── Valid-move overlay (green semi-transparent) ─────────────────────────
+    {
+      const g = new Graphics()
+      g.rect(0, 0, TS, TS).fill({ color: 0x44ff66, alpha: 0.22 })
+      g.rect(2, 2, TS - 4, TS - 4).stroke({ color: 0x44ff66, width: 2, alpha: 0.75 })
+      this.validMove = capture(renderer, g)
+    }
+
+    // ── Active-unit tile border (bright cyan, used under the unit badge) ────
+    {
+      const g = new Graphics()
+      g.rect(1, 1, TS - 2, TS - 2).stroke({ color: 0x00eeff, width: 3 })
+      this.activeUnit = capture(renderer, g)
     }
   }
 
