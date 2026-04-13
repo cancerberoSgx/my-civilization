@@ -198,5 +198,8 @@ Rsepoinse:
   5. bitECS queries are O(matching entities), not O(all entities) — AI and pathfinding workers iterate only relevant subsets                                                  
   6. SharedArrayBuffer for fog-of-war — the renderer reads visibility bits directly without a postMessage round trip per tile                                                 
                                                                                                                                                                               
-  This stack gives you a clean separation: data (JSON) → rules engine (workers) → ECS state (SharedArrayBuffer) → renderer (PixiJS). Each layer is independently testable and 
-  moddable.         
+  This stack gives you a clean separation: data (JSON) → rules engine (workers) → ECS state (SharedArrayBuffer) → renderer (PixiJS). Each layer is independently testable and   moddable.         
+
+
+# first map impl: 
+could you please implement it using a few terrains, units. By default use a 500x500 map with random units, terrain, resources, improvements, units so I can test it  performance. I should be able to zoom in-out, scroll vertical and horizontal, select units, get terrain info 
