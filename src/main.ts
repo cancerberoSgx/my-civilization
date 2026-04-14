@@ -79,6 +79,7 @@ gs().setStartGameFn((config: GameConfig) => {
     mapHeight:       config.mapHeight,
     numCivs:         config.numCivs,
     seed:            Date.now() & 0x7fffffff,
+    layout:          config.layout,
   } satisfies MapgenRequest)
 
   // ── 4. Worker done → build scene ─────────────────────────────────────────

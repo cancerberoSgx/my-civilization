@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
 import { CIV_PALETTE } from '../shared/constants'
+import { MapLayout } from '../shared/types'
 import type { GameConfig } from '../shared/types'
 
 export function App(): React.ReactElement {
@@ -36,10 +37,19 @@ export function App(): React.ReactElement {
 
 // ── New Game menu ─────────────────────────────────────────────────────────────
 
+const LAYOUT_OPTIONS: { value: MapLayout; label: string; desc: string }[] = [
+  { value: MapLayout.Continents, label: 'Continents',  desc: '2-4 large landmasses separated by ocean' },
+  { value: MapLayout.Pangaea,    label: 'Pangaea',     desc: 'One giant continent filling most of the map' },
+  { value: MapLayout.Islands,    label: 'Islands',     desc: '10+ small islands scattered across ocean' },
+  { value: MapLayout.InlandSea,  label: 'Inland Sea',  desc: 'Land ring surrounding a central sea' },
+  { value: MapLayout.Lakes,      label: 'Lakes',       desc: 'All land with scattered freshwater lakes' },
+]
+
 function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React.ReactElement {
   const [mapWidth,  setMapWidth]  = useState(80)
   const [mapHeight, setMapHeight] = useState(80)
   const [numCivs,   setNumCivs]   = useState(2)
+  const [layout,    setLayout]    = useState<MapLayout>(MapLayout.Continents)
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,8 +57,10 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
     const h = Math.max(20, Math.min(500, mapHeight))
     const n = Math.max(2,  Math.min(CIV_PALETTE.length - 1, numCivs))
     const civColors = CIV_PALETTE.slice(0, n + 1)
-    onStart({ mapWidth: w, mapHeight: h, numCivs: n, civColors })
+    onStart({ mapWidth: w, mapHeight: h, numCivs: n, civColors, layout })
   }
+
+  const selectedDesc = LAYOUT_OPTIONS.find(o => o.value === layout)?.desc ?? ''
 
   return (
     <div style={menuOverlay}>
@@ -81,6 +93,22 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
             style={inputStyle}
           />
         </div>
+
+        <div style={fieldGroup}>
+          <label style={labelStyle}>Map Layout</label>
+          <select
+            value={layout}
+            onChange={e => setLayout(e.target.value as MapLayout)}
+            style={selectStyle}
+          >
+            {LAYOUT_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Layout description hint */}
+        <div style={layoutDescStyle}>{selectedDesc}</div>
 
         {/* Civ colour preview */}
         <div style={civPreviewRow}>
@@ -229,6 +257,26 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 4,
   color:       '#e0e0e0',
   textAlign:   'right',
+}
+
+const selectStyle: React.CSSProperties = {
+  width:        148,
+  padding:      '4px 8px',
+  fontSize:     13,
+  fontFamily:   'monospace',
+  background:   'rgba(20,20,44,0.95)',
+  border:       '1px solid rgba(255,255,255,0.2)',
+  borderRadius: 4,
+  color:        '#e0e0e0',
+  cursor:       'pointer',
+}
+
+const layoutDescStyle: React.CSSProperties = {
+  fontSize:   11,
+  color:      'rgba(170,212,255,0.55)',
+  textAlign:  'center',
+  marginTop:  -6,
+  minHeight:  16,
 }
 
 const civPreviewRow: React.CSSProperties = {

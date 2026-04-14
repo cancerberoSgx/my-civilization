@@ -118,6 +118,16 @@ export interface SelectedUnit {
   strength:  number
 }
 
+// ── Map layout ────────────────────────────────────────────────────────────────
+
+export enum MapLayout {
+  Continents = 'continents',  // 2-4 large landmasses
+  Pangaea    = 'pangaea',     // one big continent
+  Islands    = 'islands',     // 10+ small islands
+  InlandSea  = 'inland_sea',  // land ring surrounding a central sea
+  Lakes      = 'lakes',       // all land with scattered freshwater lakes
+}
+
 // ── Game configuration (set by New Game menu) ─────────────────────────────────
 
 export interface GameConfig {
@@ -126,6 +136,7 @@ export interface GameConfig {
   numCivs:   number
   /** index 0 unused; [1..numCivs] are the hex colours for each civ */
   civColors: number[]
+  layout:    MapLayout
 }
 
 // ── Worker messages ──────────────────────────────────────────────────────────
@@ -139,6 +150,7 @@ export interface MapgenRequest {
   mapHeight:       number
   numCivs:         number
   seed:            number
+  layout:          MapLayout
 }
 
 export type MapgenResponse =

@@ -11,7 +11,7 @@ import {
   MAX_UNITS,
 } from '../shared/constants'
 import {
-  TerrainType, FeatureType, ResourceType, ImprovementType, UnitTypeId,
+  TerrainType, FeatureType, ResourceType, ImprovementType, UnitTypeId, MapLayout,
 } from '../shared/types'
 import type { MapgenRequest } from '../shared/types'
 
@@ -67,7 +67,7 @@ const DIRS4: [number, number, number, number][] = [
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 self.onmessage = (e: MessageEvent<MapgenRequest>) => {
-  const { tileBuffer, unitBuffer, unitCountBuffer, mapWidth, mapHeight, numCivs, seed } = e.data
+  const { tileBuffer, unitBuffer, unitCountBuffer, mapWidth, mapHeight, numCivs, seed, layout } = e.data
 
   const tiles     = new Uint8Array(tileBuffer)
   const units     = new Uint8Array(unitBuffer)
@@ -75,6 +75,29 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
   const unitView  = new DataView(unitBuffer)
 
   const rng = new RNG(seed)
+
+  // ── Layout-specific pre-computation ─────────────────────────────────────────
+  // Continent seeds (Continents layout) and lake basins (Lakes layout) are
+  // sampled from the RNG before the terrain loop so the rest of generation
+  // stays deterministic relative to the seed.
+  const contSeeds:  [number, number][] = []
+  const lakeBasins: [number, number][] = []
+
+  if (layout === MapLayout.Continents) {
+    const n = 2 + rng.int(3)  // 2-4 continents
+    for (let i = 0; i < n; i++)
+      contSeeds.push([0.15 + rng.next() * 0.70, 0.15 + rng.next() * 0.70])
+  }
+  if (layout === MapLayout.Lakes) {
+    const n = 4 + rng.int(4)  // 4-8 lakes
+    for (let i = 0; i < n; i++)
+      lakeBasins.push([0.15 + rng.next() * 0.70, 0.15 + rng.next() * 0.70])
+  }
+
+  // Ocean / coast thresholds — Islands uses higher values so more of the
+  // high-frequency noise surface sits below sea level.
+  const oceanThresh = layout === MapLayout.Islands ? 0.44 : 0.28
+  const coastThresh = layout === MapLayout.Islands ? 0.52 : 0.38
 
   // ── 1. Generate terrain ─────────────────────────────────────────────────────
   // Also store the raw elevation for later river-tracing.
@@ -85,10 +108,58 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
     for (let tx = 0; tx < mapWidth; tx++) {
       const nx = tx / mapWidth
 
-      const elev    = fbm(nx * 4.0, ny * 4.0, 6, seed)
-      const moist   = fbm(nx * 3.0 + 100, ny * 3.0 + 100, 4, seed + 999)
+      // ── Layout-shaped elevation ───────────────────────────────────────────
+      const raw4  = fbm(nx * 4.0, ny * 4.0, 6, seed)
+      const ldx   = nx - 0.5, ldy = ny - 0.5
+      const dist2 = Math.sqrt(ldx * ldx + ldy * ldy) * 2  // 0=centre, 1=edge midpoints
+
+      let elev: number
+      switch (layout) {
+        case MapLayout.Pangaea: {
+          // Dome-shaped boost peaks at the centre → one big continent
+          elev = Math.min(1, raw4 + 0.40 * Math.max(0, 1 - dist2 * 1.15))
+          break
+        }
+        case MapLayout.Continents: {
+          // Radial boost around each pre-computed continent seed
+          let boost = 0
+          for (const [scx, scy] of contSeeds) {
+            const d = Math.sqrt((nx - scx) ** 2 + (ny - scy) ** 2) * 4.5
+            boost = Math.max(boost, 0.38 * Math.max(0, 1 - d))
+          }
+          elev = Math.min(1, raw4 + boost)
+          break
+        }
+        case MapLayout.Islands: {
+          // High-frequency noise → small peaks; oceanThresh/coastThresh raised
+          // so only the tallest peaks break the surface as islands
+          elev = fbm(nx * 9.0, ny * 9.0, 5, seed)
+          break
+        }
+        case MapLayout.InlandSea: {
+          // Centre is depressed (sea); edges are elevated (land ring)
+          const inlandBoost = 0.35 * dist2 - 0.28
+          elev = Math.max(0, Math.min(1, raw4 + inlandBoost))
+          break
+        }
+        case MapLayout.Lakes: {
+          // Overall elevation raised so map is mostly land; circular basins
+          // become freshwater lakes (ocean tiles surrounded by land)
+          let lakeDepression = 0
+          for (const [lcx, lcy] of lakeBasins) {
+            const d = Math.sqrt((nx - lcx) ** 2 + (ny - lcy) ** 2) * 5.5
+            lakeDepression = Math.max(lakeDepression, 0.55 * Math.max(0, 1 - d))
+          }
+          elev = Math.max(0, Math.min(1, raw4 + 0.25 - lakeDepression))
+          break
+        }
+        default:
+          elev = raw4
+      }
+
+      const moist    = fbm(nx * 3.0 + 100, ny * 3.0 + 100, 4, seed + 999)
       const featureN = fbm(nx * 8.0, ny * 8.0, 3, seed + 12345)
-      const lat     = Math.abs(ny - 0.5) * 2  // 0=equator → 1=poles
+      const lat      = Math.abs(ny - 0.5) * 2  // 0=equator → 1=poles
 
       elevMap[ty * mapWidth + tx] = elev
 
@@ -98,9 +169,9 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
       let improvement = ImprovementType.None
 
       // ── Terrain by elevation ──
-      if (elev < 0.28) {
+      if (elev < oceanThresh) {
         terrain = TerrainType.Ocean
-      } else if (elev < 0.38) {
+      } else if (elev < coastThresh) {
         terrain = TerrainType.Coast
       } else if (elev > 0.88) {
         terrain = TerrainType.Mountain

@@ -257,3 +257,17 @@ in rivers drawing algorithm:
  * make sure the river line is continous, currently if the river direction is vertical, the river tile line is horizontal
  * make sure rivers always ends in ocean, or lake (water tile)
  * all the map must have rivers tiles uniformly more or less...
+
+
+# map layouts
+
+Context: 
+there will be different map layouts, for example:
+ * "islands" (10 or more islands)
+ * continents
+ * "panagea" (a bit single continent)
+ * "inland sea" (a big sea sorounded by land)
+ * "lakes" all tiles in the map are land with the exception of inner big lakes
+tasks:
+On create game modal, allow the user to configure which kind of terrain layout they want
+
