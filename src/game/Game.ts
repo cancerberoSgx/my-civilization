@@ -140,6 +140,16 @@ export class Game {
     const uy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
     if (ux === toX && uy === toY) return false
 
+    // Spent unit — redefine the stored path without consuming a move this turn.
+    // The new path auto-executes on the unit's next turn as normal.
+    if (this.unitBytes[off + UNIT_MOVES_OFF] === 0) {
+      const path = this._findPath(ux, uy, toX, toY, uid)
+      if (!path || path.length === 0) return false
+      this._unitPaths.set(uid, path)
+      this.cb.onPathChanged(path)
+      return true
+    }
+
     const tileKey = toY * this.mapWidth + toX
 
     if (this._validMoves.has(tileKey)) {
@@ -149,11 +159,10 @@ export class Game {
       return true
     }
 
-    // Far target — compute A* path
+    // Far target — compute A* path, execute first step, store the rest
     const path = this._findPath(ux, uy, toX, toY, uid)
     if (!path || path.length === 0) return false
 
-    // Store waypoints after the first step for future turns
     if (path.length > 1) {
       this._unitPaths.set(uid, path.slice(1))
     } else {
