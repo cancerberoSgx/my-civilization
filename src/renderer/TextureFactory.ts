@@ -32,6 +32,10 @@ export class TextureFactory {
   readonly select:     Texture
   readonly validMove:  Texture   // green overlay for reachable tiles
   readonly activeUnit: Texture   // pulsing border for focused unit tile
+  readonly pathStep:        Texture   // blue tint for intermediate path tiles
+  readonly pathDest:        Texture   // gold highlight for path destination tile
+  readonly pathPreview:     Texture   // pink tint for right-button hover preview (intermediate)
+  readonly pathPreviewDest: Texture   // bright pink for right-button hover destination
   readonly river     = new Map<number, Texture>()  // key = RIVER bitmask (1-15)
 
   constructor(renderer: Renderer) {
@@ -174,6 +178,36 @@ export class TextureFactory {
       const g = new Graphics()
       g.rect(1, 1, TS - 2, TS - 2).stroke({ color: 0x00eeff, width: 3 })
       this.activeUnit = capture(renderer, g)
+    }
+
+    // ── Path overlays ─────────────────────────────────────────────────────────
+    // pathStep: subtle blue tint for intermediate tiles along a queued route
+    {
+      const g = new Graphics()
+      g.rect(0, 0, TS, TS).fill({ color: 0x4488ff, alpha: 0.18 })
+      g.rect(3, 3, TS - 6, TS - 6).stroke({ color: 0x4488ff, width: 1.5, alpha: 0.65 })
+      this.pathStep = capture(renderer, g)
+    }
+    // pathDest: bright gold frame for the queued destination tile
+    {
+      const g = new Graphics()
+      g.rect(0, 0, TS, TS).fill({ color: 0xffcc22, alpha: 0.28 })
+      g.rect(2, 2, TS - 4, TS - 4).stroke({ color: 0xffcc22, width: 2.5, alpha: 0.92 })
+      this.pathDest = capture(renderer, g)
+    }
+
+    // pathPreview / pathPreviewDest: pink variants shown while right-button is held
+    {
+      const g = new Graphics()
+      g.rect(0, 0, TS, TS).fill({ color: 0xff44aa, alpha: 0.20 })
+      g.rect(3, 3, TS - 6, TS - 6).stroke({ color: 0xff44aa, width: 1.5, alpha: 0.72 })
+      this.pathPreview = capture(renderer, g)
+    }
+    {
+      const g = new Graphics()
+      g.rect(0, 0, TS, TS).fill({ color: 0xff44aa, alpha: 0.38 })
+      g.rect(2, 2, TS - 4, TS - 4).stroke({ color: 0xff44aa, width: 3.0, alpha: 0.96 })
+      this.pathPreviewDest = capture(renderer, g)
     }
 
     // ── River flow textures (one per bitmask 1-15) ───────────────────────

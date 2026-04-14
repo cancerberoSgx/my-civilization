@@ -3,13 +3,14 @@
  *
  * Owns direct views into the SharedArrayBuffers (unit + tile data).
  * Drives the turn cycle:
- *   Human turn  → auto-focuses units one by one; waits for right-click moves
- *                 and "End Turn" button.
+ *   Human turn  → auto-focuses units one by one.  Units that have a stored
+ *                 movement path auto-step at turn start (Civ-style queued
+ *                 orders); others wait for right-click → requestMoveTo().
  *   AI turn     → moves every unit randomly in one synchronous pass, then
  *                 auto-advances after a short visual delay.
  *
- * All state changes are communicated to the rest of the app via callback
- * functions set after construction — no circular imports.
+ * All state changes are communicated via callback functions set after
+ * construction — no circular imports.
  */
 import {
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF, UNIT_CIV_OFF,
@@ -38,6 +39,10 @@ export function buildPlayers(numCivs: number, civColors: number[]): Player[] {
   }))
 }
 
+// ── A* node (module-level to avoid per-call type redeclarations) ──────────────
+
+interface ANode { x: number; y: number; g: number; f: number; parent: ANode | null }
+
 // ── Callbacks wired by main.ts ────────────────────────────────────────────────
 
 export interface GameCallbacks {
@@ -51,6 +56,11 @@ export interface GameCallbacks {
   onValidMovesChanged(moves: ReadonlySet<number>): void
   /** All human units are done — enable the End-Turn button. */
   onAllUnitsDone(): void
+  /**
+   * Called when the active unit's stored movement path changes or is cleared.
+   * Fired every time a new unit becomes active (empty array if no stored path).
+   */
+  onPathChanged(path: ReadonlyArray<{ x: number; y: number }>): void
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────────
@@ -70,6 +80,8 @@ export class Game {
   private _pendingIds  = new Set<number>()
   // Currently focused unit for the human player
   private _activeUnitId = -1
+  // Stored multi-turn movement orders: uid → remaining waypoints (not including current position)
+  private _unitPaths = new Map<number, Array<{ x: number; y: number }>>()
 
   private readonly unitView:  DataView
   private readonly unitBytes: Uint8Array
@@ -110,32 +122,68 @@ export class Game {
   }
 
   /**
-   * Human requests to move the active unit to (tx, ty).
-   * Returns true if the move was valid and applied.
+   * Human requests to move the active unit toward (toX, toY).
+   *
+   * • Adjacent tile (within _validMoves): moves immediately, cancels any
+   *   previously stored path.
+   * • Far tile: computes an A* path, executes the first step, and stores
+   *   the remaining waypoints — they are auto-executed in future turns.
+   *
+   * Returns true if a step was taken.
    */
-  requestMove(toX: number, toY: number): boolean {
+  requestMoveTo(toX: number, toY: number): boolean {
     if (this._activeUnitId < 0 || !this.currentPlayer.isHuman) return false
-
-    const tileKey = toY * this.mapWidth + toX
-    if (!this._validMoves.has(tileKey)) return false
 
     const uid = this._activeUnitId
     const off = uid * UNIT_STRIDE
-    const fx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
-    const fy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    const ux  = this.unitView.getUint16(off + UNIT_X_OFF, true)
+    const uy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    if (ux === toX && uy === toY) return false
 
-    this._applyMove(uid, toX, toY)
-    this.cb.onUnitMoved(uid, fx, fy, toX, toY)
+    const tileKey = toY * this.mapWidth + toX
 
-    this._pendingIds.delete(uid)
-    this._advanceActiveUnit()
+    if (this._validMoves.has(tileKey)) {
+      // Adjacent — cancel any stored path and move immediately
+      this._unitPaths.delete(uid)
+      this._executeStep(uid, toX, toY)
+      return true
+    }
+
+    // Far target — compute A* path
+    const path = this._findPath(ux, uy, toX, toY, uid)
+    if (!path || path.length === 0) return false
+
+    // Store waypoints after the first step for future turns
+    if (path.length > 1) {
+      this._unitPaths.set(uid, path.slice(1))
+    } else {
+      this._unitPaths.delete(uid)
+    }
+
+    this._executeStep(uid, path[0].x, path[0].y)
     return true
   }
 
-  /** Skip the active unit without moving (still counts as "acted"). */
+  /**
+   * Compute the path the active unit would take to reach (toX, toY) — pure
+   * read, no state changes.  Used to render the right-button hover preview.
+   * Returns the waypoint list (not including start) or null if unreachable.
+   */
+  previewPathTo(toX: number, toY: number): Array<{ x: number; y: number }> | null {
+    if (this._activeUnitId < 0) return null
+    const uid = this._activeUnitId
+    const off = uid * UNIT_STRIDE
+    const ux  = this.unitView.getUint16(off + UNIT_X_OFF, true)
+    const uy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    if (ux === toX && uy === toY) return []
+    return this._findPath(ux, uy, toX, toY, uid)
+  }
+
+  /** Skip the active unit without moving (also cancels any stored path). */
   skipActiveUnit(): void {
     if (this._activeUnitId < 0 || !this.currentPlayer.isHuman) return
     const uid = this._activeUnitId
+    this._unitPaths.delete(uid)
     this.unitBytes[uid * UNIT_STRIDE + UNIT_MOVES_OFF] = 0
     this._pendingIds.delete(uid)
     this._advanceActiveUnit()
@@ -183,7 +231,6 @@ export class Game {
   }
 
   private _nextTurn(): void {
-    // Advance to next player; increment global turn after last player
     const wasLast = this.currentPlayerIdx === this.players.length - 1
     this.currentPlayerIdx = (this.currentPlayerIdx + 1) % this.players.length
     if (wasLast) this.turnNumber++
@@ -194,11 +241,9 @@ export class Game {
   // ── Private: AI ───────────────────────────────────────────────────────────
 
   private _runAITurn(): void {
-    // Move all units synchronously in one shot — no visual lag
     for (const uid of [...this._pendingIds]) {
       this._moveRandom(uid)
     }
-    // Brief delay so the UI "AI is thinking…" flash is perceptible
     setTimeout(() => this._nextTurn(), 120)
   }
 
@@ -219,7 +264,6 @@ export class Game {
       this.cb.onUnitMoved(uid, fx, fy, tx, ty)
       return
     }
-    // No valid direction found — unit stays (still counts as acted)
     this.unitBytes[off + UNIT_MOVES_OFF] = 0
     this._pendingIds.delete(uid)
   }
@@ -236,24 +280,61 @@ export class Game {
     }
   }
 
+  /**
+   * Focus on a unit for the human player.
+   *
+   * If the unit has a stored movement path and moves remaining, it
+   * auto-executes the next waypoint without requiring player input.
+   * The recursion terminates once all path-units have moved and the first
+   * unit without queued orders becomes active (or all units are done).
+   */
   private _setActiveUnit(uid: number): void {
     this._activeUnitId = uid
-    this._validMoves   = this._computeValidMoves(uid)
+
+    // Auto-execute stored path if one exists for this unit
+    if (uid >= 0 && this.currentPlayer.isHuman) {
+      const path = this._unitPaths.get(uid)
+      if (path && path.length > 0 &&
+          this.unitBytes[uid * UNIT_STRIDE + UNIT_MOVES_OFF] > 0) {
+        const step = path.shift()!                              // consume next waypoint
+        if (path.length === 0) this._unitPaths.delete(uid)
+
+        if (this._passable(uid, step.x, step.y)) {
+          this._executeStep(uid, step.x, step.y)
+          return  // _executeStep → _advanceActiveUnit → next _setActiveUnit call
+        }
+        // Waypoint became impassable — clear the path and fall through
+        this._unitPaths.delete(uid)
+      }
+    }
+
+    this._validMoves = this._computeValidMoves(uid)
     this.cb.onActiveUnitChanged(uid)
     this.cb.onValidMovesChanged(this._validMoves)
+    this.cb.onPathChanged(uid >= 0 ? (this._unitPaths.get(uid) ?? []) : [])
   }
 
   private _firstPendingAfter(currentId: number): number {
-    // Find the smallest id > currentId in pending set
     let firstWrapped = -1
     for (const id of this._pendingIds) {
       if (id > currentId) return id
       if (firstWrapped < 0) firstWrapped = id
     }
-    return firstWrapped  // wrapped around
+    return firstWrapped
   }
 
   // ── Private: movement helpers ─────────────────────────────────────────────
+
+  /** Commit one step, fire callbacks, remove unit from pending, advance. */
+  private _executeStep(uid: number, toX: number, toY: number): void {
+    const off = uid * UNIT_STRIDE
+    const fx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
+    const fy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    this._applyMove(uid, toX, toY)
+    this.cb.onUnitMoved(uid, fx, fy, toX, toY)
+    this._pendingIds.delete(uid)
+    this._advanceActiveUnit()
+  }
 
   private _applyMove(uid: number, tx: number, ty: number): void {
     const off = uid * UNIT_STRIDE
@@ -298,6 +379,77 @@ export class Game {
     return terr !== TerrainType.Ocean &&
            terr !== TerrainType.Coast &&
            terr !== TerrainType.Mountain
+  }
+
+  /**
+   * A* pathfinding from (fromX, fromY) to (toX, toY) for the given unit.
+   *
+   * Returns the sequence of tiles to step through (not including the start
+   * tile, including the destination), or null if no path is found within the
+   * search budget.
+   *
+   * Uses Chebyshev distance as the heuristic (8-directional movement, uniform
+   * step cost).  The open-set is scanned linearly; for the map sizes and path
+   * lengths in this game the O(n) scan is fast enough (< 1 ms).
+   */
+  private _findPath(
+    fromX: number, fromY: number,
+    toX:   number, toY:   number,
+    uid:   number,
+  ): Array<{ x: number; y: number }> | null {
+    if (!this._passable(uid, toX, toY)) return null
+
+    const W      = this.mapWidth
+    const key    = (x: number, y: number) => y * W + x
+    const heur   = (x: number, y: number) => Math.max(Math.abs(x - toX), Math.abs(y - toY))
+    const BUDGET = (this.mapWidth + this.mapHeight) * 4   // generous but bounded
+
+    const open   = new Map<number, ANode>()
+    const closed = new Set<number>()
+
+    open.set(key(fromX, fromY), {
+      x: fromX, y: fromY, g: 0, f: heur(fromX, fromY), parent: null,
+    })
+
+    while (open.size > 0) {
+      if (closed.size >= BUDGET) return null  // give up — too far or no path
+
+      // Pop lowest-f node (linear scan; fast enough for this scale)
+      let best: ANode | undefined
+      for (const n of open.values()) {
+        if (!best || n.f < best.f) best = n
+      }
+      if (!best) break
+
+      open.delete(key(best.x, best.y))
+      closed.add(key(best.x, best.y))
+
+      if (best.x === toX && best.y === toY) {
+        // Reconstruct path from goal back to start, excluding start
+        const path: { x: number; y: number }[] = []
+        let cur: ANode | null = best
+        while (cur && (cur.x !== fromX || cur.y !== fromY)) {
+          path.unshift({ x: cur.x, y: cur.y })
+          cur = cur.parent
+        }
+        return path
+      }
+
+      for (const [dx, dy] of DIRS) {
+        const nx = best.x + dx, ny = best.y + dy
+        if (nx < 0 || nx >= this.mapWidth || ny < 0 || ny >= this.mapHeight) continue
+        const nk = key(nx, ny)
+        if (closed.has(nk)) continue
+        if (!this._passable(uid, nx, ny)) continue
+        const g = best.g + 1
+        const existing = open.get(nk)
+        if (!existing || g < existing.g) {
+          open.set(nk, { x: nx, y: ny, g, f: g + heur(nx, ny), parent: best })
+        }
+      }
+    }
+
+    return null  // no path found
   }
 }
 

@@ -46,6 +46,8 @@ export class TileRenderer {
   readonly highlightLayer = new Container()
   /** Valid-move green overlays — sits between improve and unit layers */
   readonly moveLayer      = new Container()
+  /** Queued movement path — sits between moveLayer and unit layer */
+  readonly pathLayer      = new Container()
   /** River edge overlays — sits between terrain and feature layers */
   readonly riverLayer     = new Container()
 
@@ -74,6 +76,16 @@ export class TileRenderer {
   private riverPool:    Sprite[] = []
   private activeRivers = new Map<number, Sprite>()
 
+  // Path sprites — intermediate tiles + single destination sprite
+  private pathPool:          Sprite[] = []
+  private activePathSprites: Sprite[] = []
+  private destSprite:        Sprite
+
+  // Path preview sprites (right-button held) — pink, independent from committed path
+  private previewPool:          Sprite[] = []
+  private activePreviewSprites: Sprite[] = []
+  private previewDestSprite:    Sprite
+
   // Tile data view
   private tiles: Uint8Array
 
@@ -101,6 +113,20 @@ export class TileRenderer {
     this.activeUnitSprite.height  = TILE_SIZE
     this.activeUnitSprite.visible = false
     this.moveLayer.addChild(this.activeUnitSprite)
+
+    // Destination sprite for queued movement path
+    this.destSprite = new Sprite(tf.pathDest)
+    this.destSprite.width   = TILE_SIZE
+    this.destSprite.height  = TILE_SIZE
+    this.destSprite.visible = false
+    this.pathLayer.addChild(this.destSprite)
+
+    // Destination sprite for right-button preview path
+    this.previewDestSprite = new Sprite(tf.pathPreviewDest)
+    this.previewDestSprite.width   = TILE_SIZE
+    this.previewDestSprite.height  = TILE_SIZE
+    this.previewDestSprite.visible = false
+    this.pathLayer.addChild(this.previewDestSprite)
 
     // Wire viewport events
     viewport.on('moved',  () => this.update(viewport))
@@ -191,6 +217,90 @@ export class TileRenderer {
       resource:    this.tiles[base + TILE_RESOURCE],
       improvement: this.tiles[base + TILE_IMPROVEMENT],
     }
+  }
+
+  /**
+   * Draw a queued movement path on the map.
+   * tiles[0..n-2] get a blue intermediate overlay; tiles[n-1] gets the gold
+   * destination frame.  Pass an empty array to clear.
+   */
+  setPath(tiles: ReadonlyArray<{ x: number; y: number }>): void {
+    // Return intermediate sprites to pool
+    for (const s of this.activePathSprites) {
+      s.visible = false
+      this.pathPool.push(s)
+    }
+    this.activePathSprites = []
+
+    if (tiles.length === 0) {
+      this.destSprite.visible = false
+      return
+    }
+
+    // Intermediate tiles
+    for (let i = 0; i < tiles.length - 1; i++) {
+      const { x, y } = tiles[i]
+      const s = this._getPathStepSprite()
+      s.position.set(x * TILE_SIZE, y * TILE_SIZE)
+      s.visible = true
+      this.activePathSprites.push(s)
+    }
+
+    // Destination tile
+    const dest = tiles[tiles.length - 1]
+    this.destSprite.position.set(dest.x * TILE_SIZE, dest.y * TILE_SIZE)
+    this.destSprite.visible = true
+  }
+
+  private _getPathStepSprite(): Sprite {
+    if (this.pathPool.length > 0) {
+      return this.pathPool.pop()!
+    }
+    const s = new Sprite(this.tf.pathStep)
+    s.width  = TILE_SIZE
+    s.height = TILE_SIZE
+    this.pathLayer.addChild(s)
+    return s
+  }
+
+  /**
+   * Show a pink path preview while the right mouse button is held.
+   * Clears automatically when called with an empty array.
+   */
+  setPathPreview(tiles: ReadonlyArray<{ x: number; y: number }>): void {
+    for (const s of this.activePreviewSprites) {
+      s.visible = false
+      this.previewPool.push(s)
+    }
+    this.activePreviewSprites = []
+
+    if (tiles.length === 0) {
+      this.previewDestSprite.visible = false
+      return
+    }
+
+    for (let i = 0; i < tiles.length - 1; i++) {
+      const { x, y } = tiles[i]
+      const s = this._getPreviewSprite()
+      s.position.set(x * TILE_SIZE, y * TILE_SIZE)
+      s.visible = true
+      this.activePreviewSprites.push(s)
+    }
+
+    const dest = tiles[tiles.length - 1]
+    this.previewDestSprite.position.set(dest.x * TILE_SIZE, dest.y * TILE_SIZE)
+    this.previewDestSprite.visible = true
+  }
+
+  private _getPreviewSprite(): Sprite {
+    if (this.previewPool.length > 0) {
+      return this.previewPool.pop()!
+    }
+    const s = new Sprite(this.tf.pathPreview)
+    s.width  = TILE_SIZE
+    s.height = TILE_SIZE
+    this.pathLayer.addChild(s)
+    return s
   }
 
   // ── Private ──────────────────────────────────────────────────────────────────

@@ -271,3 +271,20 @@ there will be different map layouts, for example:
 tasks:
 On create game modal, allow the user to configure which kind of terrain layout they want
 
+
+# unit movement
+when a unit is selected and user right click another tile, a path to the tile must be drawn. 
+The tile can be far away so it can take the unit many turns to reach destination
+We want to save this unit-movement-paths so I don't need to re-enter movement orders to that unit next turn
+
+p2
+when unit is selected for movement, and I right click a tile to move it, while I'm pressing the button the path should be rendered in PINK color
+
+p3
+when I left-click a unit in the map, it gets selected for movement
+
+
+images
+
+can you help me using the right pixi.js assets packager so each unit is represented with transparent pngs in data/set1/units folder ? 
+

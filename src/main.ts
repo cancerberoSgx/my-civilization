@@ -123,6 +123,7 @@ gs().setStartGameFn((config: GameConfig) => {
     viewport.addChild(tileRenderer.resourceLayer)
     viewport.addChild(tileRenderer.improveLayer)
     viewport.addChild(tileRenderer.moveLayer)      // valid-move green overlays
+    viewport.addChild(tileRenderer.pathLayer)      // queued movement path (above moves, below units)
     viewport.addChild(unitRenderer.layer)
     viewport.addChild(tileRenderer.highlightLayer) // hover/select/activeUnit border on top
 
@@ -153,6 +154,7 @@ gs().setStartGameFn((config: GameConfig) => {
       },
 
       onActiveUnitChanged(uid) {
+        tileRenderer.setPathPreview([])  // discard any right-button hover preview
         if (uid < 0) {
           tileRenderer.setActiveUnitTile(-1, -1)
           unitRenderer.setActiveUnit(-1)
@@ -174,6 +176,10 @@ gs().setStartGameFn((config: GameConfig) => {
         tileRenderer.setValidMoves(moves)
       },
 
+      onPathChanged(path) {
+        tileRenderer.setPath(path)
+      },
+
       onAllUnitsDone() {
         gs().setCanEndTurn(true)
         gs().setPendingCount(0)
@@ -189,23 +195,34 @@ gs().setStartGameFn((config: GameConfig) => {
     // ── Canvas input events ────────────────────────────────────────────────
     const canvas = app.canvas as HTMLCanvasElement
 
-    let ptrDownX = 0, ptrDownY = 0, ptrDownBtn = 0
+    let ptrDownX = 0, ptrDownY = 0
+    let rightDown = false
+    // Last tile the preview path was computed for — avoids redundant A* calls
+    let previewTx = -1, previewTy = -1
+
     canvas.addEventListener('pointerdown', (e: PointerEvent) => {
-      ptrDownX = e.clientX; ptrDownY = e.clientY; ptrDownBtn = e.button
+      ptrDownX = e.clientX; ptrDownY = e.clientY
+      if (e.button === 2) { rightDown = true; previewTx = -1; previewTy = -1 }
     })
 
     canvas.addEventListener('pointerup', (e: PointerEvent) => {
-      if (Math.abs(e.clientX - ptrDownX) > 6 || Math.abs(e.clientY - ptrDownY) > 6) return
-
       const w  = viewport.toWorld(e.clientX, e.clientY)
       const tx = Math.floor(w.x / TILE_SIZE)
       const ty = Math.floor(w.y / TILE_SIZE)
-      if (tx < 0 || tx >= config.mapWidth || ty < 0 || ty >= config.mapHeight) return
 
-      if (ptrDownBtn === 2) {
-        game.requestMove(tx, ty)
+      if (e.button === 2) {
+        // Right-button release: commit the previewed path
+        rightDown = false; previewTx = -1; previewTy = -1
+        tileRenderer.setPathPreview([])
+        if (tx >= 0 && tx < config.mapWidth && ty >= 0 && ty < config.mapHeight) {
+          game.requestMoveTo(tx, ty)
+        }
         return
       }
+
+      // Left-button: ignore if this was a drag (camera pan)
+      if (Math.abs(e.clientX - ptrDownX) > 6 || Math.abs(e.clientY - ptrDownY) > 6) return
+      if (tx < 0 || tx >= config.mapWidth || ty < 0 || ty >= config.mapHeight) return
 
       const uid = unitRenderer.unitAt(tx, ty)
       unitRenderer.selectUnit(uid)
@@ -232,8 +249,20 @@ gs().setStartGameFn((config: GameConfig) => {
     })
 
     canvas.addEventListener('pointermove', (e: PointerEvent) => {
-      const w = viewport.toWorld(e.clientX, e.clientY)
-      tileRenderer.setHover(Math.floor(w.x / TILE_SIZE), Math.floor(w.y / TILE_SIZE))
+      const w  = viewport.toWorld(e.clientX, e.clientY)
+      const tx = Math.floor(w.x / TILE_SIZE)
+      const ty = Math.floor(w.y / TILE_SIZE)
+      tileRenderer.setHover(tx, ty)
+
+      // Update pink preview path while right button is held
+      if (rightDown && game.activeUnitId >= 0 && (tx !== previewTx || ty !== previewTy)) {
+        previewTx = tx; previewTy = ty
+        if (tx >= 0 && tx < config.mapWidth && ty >= 0 && ty < config.mapHeight) {
+          tileRenderer.setPathPreview(game.previewPathTo(tx, ty) ?? [])
+        } else {
+          tileRenderer.setPathPreview([])
+        }
+      }
     })
 
     // ── Keyboard ───────────────────────────────────────────────────────────
