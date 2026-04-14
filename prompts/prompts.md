@@ -218,13 +218,7 @@ allow the user to toggle grid lines on/off from the menu
 
 # city management
 
-context: 
-a city (city unit) represents a city which contains population (number of city people) which are assigned to an adjacent city tile (the two tiles adjacent to all directions as image shows)
-Cities contains buildings which improves city production somehow, see notes/civ-reference/buildings.json for buildings example
-workers working on tiles will generate food
-when a city unit is clicked, instead selecting for movement, it will display city's management modal. 
-t
-
+see prompts/city-management-1.md
 
 # FUTURE
 
