@@ -303,6 +303,24 @@ export class TileRenderer {
     return s
   }
 
+  /**
+   * Force-refresh a single tile after its SAB data has been edited externally.
+   * Only acts if the tile is currently in the visible range (no-op otherwise —
+   * the tile will be acquired with correct data when it next comes into view).
+   */
+  refreshTile(tx: number, ty: number): void {
+    if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) return
+    const idx = ty * this.mapWidth + tx
+    const rec = this.active.get(idx)
+    if (!rec) return
+    this.release(rec)
+    const rs = this.activeRivers.get(idx)
+    if (rs) { rs.visible = false; this.riverPool.push(rs); this.activeRivers.delete(idx) }
+    this.active.delete(idx)
+    const newRec = this.acquire(tx, ty)
+    this.active.set(idx, newRec)
+  }
+
   // ── Private ──────────────────────────────────────────────────────────────────
 
   private update(viewport: CameraViewport): void {

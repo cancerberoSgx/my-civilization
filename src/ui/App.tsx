@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
 import { Minimap } from './Minimap'
+import { BuilderPanel } from './BuilderPanel'
 import { CIV_PALETTE } from '../shared/constants'
 import { MapLayout } from '../shared/types'
 import type { GameConfig } from '../shared/types'
@@ -145,8 +146,10 @@ function GameHUD(): React.ReactElement {
   const endTurn        = useGameStore(s => s.endTurn)
   const skipUnit       = useGameStore(s => s.skipUnit)
   const skipAll        = useGameStore(s => s.skipAll)
-  const minimapVisible = useGameStore(s => s.minimapVisible)
-  const toggleMinimap  = useGameStore(s => s.toggleMinimap)
+  const minimapVisible  = useGameStore(s => s.minimapVisible)
+  const toggleMinimap   = useGameStore(s => s.toggleMinimap)
+  const builderMode     = useGameStore(s => s.builderMode)
+  const toggleBuilder   = useGameStore(s => s.toggleBuilderMode)
 
   const playerColorCss = currentPlayer
     ? `#${currentPlayer.color.toString(16).padStart(6, '0')}`
@@ -206,6 +209,14 @@ function GameHUD(): React.ReactElement {
           Map
         </button>
 
+        <button
+          style={{ ...btnStyle, ...(builderMode ? btnBuilderActive : {}) }}
+          onClick={toggleBuilder}
+          title="Open Game Builder"
+        >
+          Builder
+        </button>
+
         <span style={{ ...hudItem, opacity: 0.45, fontSize: 11 }}>
           Drag · scroll · click · right-click to move
         </span>
@@ -216,6 +227,9 @@ function GameHUD(): React.ReactElement {
 
       {/* Minimap */}
       <Minimap />
+
+      {/* Game Builder side panel */}
+      <BuilderPanel />
 
       {/* Keyboard hints */}
       <div style={hintsStyle}>
@@ -414,6 +428,12 @@ const btnMinimapActive: React.CSSProperties = {
   background: 'rgba(34,102,204,0.3)',
   border:     '1px solid rgba(68,170,255,0.6)',
   color:      '#88ccff',
+}
+
+const btnBuilderActive: React.CSSProperties = {
+  background: 'rgba(180,100,20,0.3)',
+  border:     '1px solid rgba(255,160,60,0.6)',
+  color:      '#ffbb66',
 }
 
 const btnEndTurnDisabled: React.CSSProperties = {

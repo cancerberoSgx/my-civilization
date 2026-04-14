@@ -201,6 +201,27 @@ gs().setStartGameFn((config: GameConfig) => {
       () => game.skipAllPending(),
     )
 
+    // ── Game Builder ──────────────────────────────────────────────────────────
+    gs().setBuilderApply((tx, ty) => {
+      const s    = gs()
+      const base = (ty * config.mapWidth + tx) * TILE_STRIDE
+      if (s.builderTab === 'unit') {
+        if (game.placeUnit(tx, ty, s.builderUnitTypeId, s.builderCivId) >= 0) {
+          unitRenderer.setBuffers(unitBuffer, game.unitCount)
+          gs().setUnitCount(game.unitCount)
+        }
+      } else if (s.builderTab === 'terrain') {
+        tileBytes[base + TILE_TERRAIN] = s.builderTerrainType
+        tileRenderer.refreshTile(tx, ty)
+      } else if (s.builderTab === 'resource') {
+        tileBytes[base + TILE_RESOURCE] = s.builderResourceType
+        tileRenderer.refreshTile(tx, ty)
+      } else {
+        tileBytes[base + TILE_IMPROVEMENT] = s.builderImprovementType
+        tileRenderer.refreshTile(tx, ty)
+      }
+    })
+
     // ── Minimap ────────────────────────────────────────────────────────────────
     gs().setMinimapReady(tileBuffer, (wx, wy) => viewport.moveCenter(wx, wy))
     const syncViewport = () => gs().setViewportBounds({
@@ -249,6 +270,12 @@ gs().setStartGameFn((config: GameConfig) => {
       // Left-button: ignore if this was a drag (camera pan)
       if (Math.abs(e.clientX - ptrDownX) > 6 || Math.abs(e.clientY - ptrDownY) > 6) return
       if (tx < 0 || tx >= config.mapWidth || ty < 0 || ty >= config.mapHeight) return
+
+      // Builder mode: apply edit and skip normal selection
+      if (gs().builderMode) {
+        gs().builderApply?.(tx, ty)
+        return
+      }
 
       const uid = unitRenderer.unitAt(tx, ty)
       unitRenderer.selectUnit(uid)

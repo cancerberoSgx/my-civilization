@@ -16,6 +16,7 @@ import {
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF, UNIT_CIV_OFF,
   UNIT_HP_OFF, UNIT_MOVES_OFF,
   TILE_STRIDE, TILE_TERRAIN,
+  MAX_UNITS,
 } from '../shared/constants'
 import { TerrainType, UnitTypeId } from '../shared/types'
 import { UNIT_MAP } from '../data/units'
@@ -67,7 +68,7 @@ export interface GameCallbacks {
 
 export class Game {
   readonly players:   Player[]
-  readonly unitCount: number
+  unitCount:          number   // mutable so placeUnit() can extend the live array
   readonly mapWidth:  number
   readonly mapHeight: number
 
@@ -255,6 +256,27 @@ export class Game {
   endTurn(): void {
     if (!this.currentPlayer.isHuman) return
     this._nextTurn()
+  }
+
+  // ── Game Builder ──────────────────────────────────────────────────────────
+
+  /**
+   * Spawn a new unit at (tx, ty) for the given civilization.
+   * Used by the in-game map editor.  Returns the new unit's id, or -1 if the
+   * buffer is full.
+   */
+  placeUnit(tx: number, ty: number, typeId: UnitTypeId, civId: number): number {
+    if (this.unitCount >= MAX_UNITS) return -1
+    const uid = this.unitCount
+    const off = uid * UNIT_STRIDE
+    this.unitView.setUint16(off + UNIT_X_OFF, tx, true)
+    this.unitView.setUint16(off + UNIT_Y_OFF, ty, true)
+    this.unitBytes[off + UNIT_TYPE_OFF]  = typeId
+    this.unitBytes[off + UNIT_CIV_OFF]   = civId
+    this.unitBytes[off + UNIT_HP_OFF]    = 100
+    this.unitBytes[off + UNIT_MOVES_OFF] = 0
+    this.unitCount++
+    return uid
   }
 
   // ── Private: turn cycle ────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { TileInfo, SelectedUnit, GameConfig } from '../shared/types'
+import { UnitTypeId, TerrainType, ResourceType, ImprovementType } from '../shared/types'
 import type { Player } from '../game/Game'
 
 export interface ViewportBounds {
@@ -41,6 +42,16 @@ interface GameStore {
   /** Set by main.ts; called when the user clicks New Game */
   startGameFn:   ((config: GameConfig) => void) | null
 
+  // ── Game Builder ─────────────────────────────────────────────────────────────
+  builderMode:            boolean
+  builderTab:             'unit' | 'terrain' | 'resource' | 'improvement'
+  builderCivId:           number
+  builderUnitTypeId:      UnitTypeId
+  builderTerrainType:     TerrainType
+  builderResourceType:    ResourceType
+  builderImprovementType: ImprovementType
+  builderApply:           ((tx: number, ty: number) => void) | null
+
   // ── Minimap ───────────────────────────────────────────────────────────────────
   minimapVisible:  boolean
   tileBuffer:      SharedArrayBuffer | null
@@ -62,6 +73,15 @@ interface GameStore {
   toggleMinimap(): void
   setMinimapReady(buf: SharedArrayBuffer, moveTo: (worldX: number, worldY: number) => void): void
   setViewportBounds(b: ViewportBounds): void
+
+  toggleBuilderMode(): void
+  setBuilderTab(tab: 'unit' | 'terrain' | 'resource' | 'improvement'): void
+  setBuilderCivId(id: number): void
+  setBuilderUnitTypeId(id: UnitTypeId): void
+  setBuilderTerrainType(t: TerrainType): void
+  setBuilderResourceType(r: ResourceType): void
+  setBuilderImprovementType(i: ImprovementType): void
+  setBuilderApply(fn: (tx: number, ty: number) => void): void
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -86,6 +106,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   skipUnit:    null,
   skipAll:     null,
   startGameFn: null,
+
+  builderMode:            false,
+  builderTab:             'unit',
+  builderCivId:           1,
+  builderUnitTypeId:      UnitTypeId.Warrior,
+  builderTerrainType:     TerrainType.Grassland,
+  builderResourceType:    ResourceType.None,
+  builderImprovementType: ImprovementType.None,
+  builderApply:           null,
 
   minimapVisible: true,
   tileBuffer:     null,
@@ -116,4 +145,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   toggleMinimap:    ()            => set(s => ({ minimapVisible: !s.minimapVisible })),
   setMinimapReady:  (buf, moveTo) => set({ tileBuffer: buf, minimapMoveTo: moveTo }),
   setViewportBounds: (b)          => set({ viewportBounds: b }),
+
+  toggleBuilderMode:      ()   => set(s => ({ builderMode: !s.builderMode })),
+  setBuilderTab:          (tab) => set({ builderTab: tab }),
+  setBuilderCivId:        (id)  => set({ builderCivId: id }),
+  setBuilderUnitTypeId:   (id)  => set({ builderUnitTypeId: id }),
+  setBuilderTerrainType:  (t)   => set({ builderTerrainType: t }),
+  setBuilderResourceType: (r)   => set({ builderResourceType: r }),
+  setBuilderImprovementType: (i) => set({ builderImprovementType: i }),
+  setBuilderApply:        (fn)  => set({ builderApply: fn }),
 }))
