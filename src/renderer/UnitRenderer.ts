@@ -13,8 +13,7 @@ import type { UnitTextureFactory } from './UnitTextureFactory'
 import type { SelectedUnit } from '../shared/types'
 import { UNIT_MAP } from '../data/units'
 
-const BADGE = 36
-const BADGE_OFFSET = (TILE_SIZE - BADGE) / 2  // centre badge in tile
+const SPRITE_SIZE = TILE_SIZE
 
 export class UnitRenderer {
   readonly layer = new Container()
@@ -105,7 +104,7 @@ export class UnitRenderer {
     const off = id * UNIT_STRIDE
     const tx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
     const ty  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
-    sprite.position.set(tx * TILE_SIZE + BADGE_OFFSET, ty * TILE_SIZE + BADGE_OFFSET)
+    sprite.position.set(tx * TILE_SIZE, ty * TILE_SIZE)
   }
 
   /** Force a full viewport cull + re-acquire cycle (used after AI turn). */
@@ -152,9 +151,9 @@ export class UnitRenderer {
 
       const tex    = this.utf.get(civId, typeId)
       const sprite = this.getPooled(tex)
-      sprite.position.set(tx * TILE_SIZE + BADGE_OFFSET, ty * TILE_SIZE + BADGE_OFFSET)
-      sprite.width  = BADGE
-      sprite.height = BADGE
+      sprite.position.set(tx * TILE_SIZE, ty * TILE_SIZE)
+      sprite.width  = SPRITE_SIZE
+      sprite.height = SPRITE_SIZE
       sprite.visible = true
       this._applyTint(id, sprite)
       this.active.set(id, sprite)

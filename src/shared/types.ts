@@ -77,6 +77,8 @@ export interface UnitDef {
   strength: number
   movement: number
   isNaval:  boolean
+  /** Atlas frame name (PNG filename without extension). Undefined = use letter badge. */
+  sprite?:  string
 }
 
 export interface ResourceDef {

@@ -1,47 +1,52 @@
 /**
- * Creates unit badge textures: a coloured circle with a letter.
- * Uses renderer.generateTexture() — the PixiJS v8 off-screen render API.
+ * Returns unit textures.
+ * - If the unit has a `sprite` frame name and the atlas is loaded, returns the
+ *   atlas texture directly (no caching needed — PixiJS already caches it).
+ * - Otherwise falls back to a procedurally generated civ-coloured letter badge.
  */
 import { Graphics, Text, Container, Rectangle, type Renderer, type Texture } from 'pixi.js'
 import { UNIT_MAP }    from '../data/units'
 import { UnitTypeId }  from '../shared/types'
-
-const BADGE = 36  // badge size in pixels
+import { TILE_SIZE }   from '../shared/constants'
 
 export class UnitTextureFactory {
-  private cache = new Map<string, Texture>()
+  private badgeCache = new Map<string, Texture>()
 
   constructor(
     private renderer: Renderer,
     private civColors: number[],
+    private atlasTextures: Record<string, Texture> = {},
   ) {}
 
   get(civId: number, unitTypeId: UnitTypeId): Texture {
+    const def = UNIT_MAP.get(unitTypeId)
+    if (def?.sprite) {
+      const tex = this.atlasTextures[def.sprite]
+      if (tex) return tex
+    }
+    // Fallback: civ-coloured letter badge
     const key = `${civId}_${unitTypeId}`
-    if (this.cache.has(key)) return this.cache.get(key)!
-    return this.build(civId, unitTypeId, key)
+    return this.badgeCache.get(key) ?? this.buildBadge(civId, unitTypeId, key)
   }
 
-  private build(civId: number, unitTypeId: UnitTypeId, key: string): Texture {
+  private buildBadge(civId: number, unitTypeId: UnitTypeId, key: string): Texture {
     const civColor = this.civColors[civId] ?? 0x888888
     const letter   = UNIT_MAP.get(unitTypeId)?.letter ?? '?'
+    const S        = TILE_SIZE
 
     const container = new Container()
 
-    // Circle badge
     const g = new Graphics()
-    g.circle(BADGE / 2, BADGE / 2, BADGE / 2 - 1).fill(0x000000)
-    g.circle(BADGE / 2, BADGE / 2, BADGE / 2 - 3).fill(civColor)
-    // Highlight arc (top)
-    g.arc(BADGE / 2, BADGE / 2, BADGE / 2 - 5, -Math.PI * 0.8, -Math.PI * 0.2)
+    g.circle(S / 2, S / 2, S / 2 - 1).fill(0x000000)
+    g.circle(S / 2, S / 2, S / 2 - 3).fill(civColor)
+    g.arc(S / 2, S / 2, S / 2 - 5, -Math.PI * 0.8, -Math.PI * 0.2)
       .stroke({ color: 0xffffff, width: 2, alpha: 0.45 })
     container.addChild(g)
 
-    // Unit letter
     const label = new Text({
       text: letter,
       style: {
-        fontSize:   16,
+        fontSize:   Math.round(S * 0.4),
         fill:       0xffffff,
         fontFamily: 'Arial Black, Arial, sans-serif',
         fontWeight: 'bold',
@@ -49,17 +54,17 @@ export class UnitTextureFactory {
       },
     })
     label.anchor.set(0.5)
-    label.position.set(BADGE / 2, BADGE / 2)
+    label.position.set(S / 2, S / 2)
     container.addChild(label)
 
     const texture = this.renderer.generateTexture({
       target:     container,
-      frame:      new Rectangle(0, 0, BADGE, BADGE),
+      frame:      new Rectangle(0, 0, S, S),
       resolution: 1,
     })
     container.destroy({ children: true })
 
-    this.cache.set(key, texture)
+    this.badgeCache.set(key, texture)
     return texture
   }
 }

@@ -1,0 +1,327 @@
+{
+  "frames": {
+    "longbowman": {
+      "frame": {
+        "x": 4,
+        "y": 4,
+        "w": 572,
+        "h": 941
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 274,
+        "y": 25,
+        "w": 572,
+        "h": 941
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "pikeman": {
+      "frame": {
+        "x": 4,
+        "y": 953,
+        "w": 493,
+        "h": 918
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 256,
+        "y": 30,
+        "w": 493,
+        "h": 918
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "worker": {
+      "frame": {
+        "x": 4,
+        "y": 1879,
+        "w": 654,
+        "h": 849
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 184,
+        "y": 79,
+        "w": 654,
+        "h": 849
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "warrior": {
+      "frame": {
+        "x": 505,
+        "y": 953,
+        "w": 440,
+        "h": 847
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 226,
+        "y": 93,
+        "w": 440,
+        "h": 847
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "maceman": {
+      "frame": {
+        "x": 584,
+        "y": 4,
+        "w": 655,
+        "h": 838
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 294,
+        "y": 99,
+        "w": 655,
+        "h": 838
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "archer": {
+      "frame": {
+        "x": 953,
+        "y": 850,
+        "w": 433,
+        "h": 787
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 334,
+        "y": 127,
+        "w": 433,
+        "h": 787
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "crossbowman": {
+      "frame": {
+        "x": 1247,
+        "y": 4,
+        "w": 599,
+        "h": 774
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 265,
+        "y": 131,
+        "w": 599,
+        "h": 774
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "work_boat": {
+      "frame": {
+        "x": 4,
+        "y": 2736,
+        "w": 660,
+        "h": 766
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 184,
+        "y": 76,
+        "w": 660,
+        "h": 766
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "settler": {
+      "frame": {
+        "x": 666,
+        "y": 1808,
+        "w": 820,
+        "h": 754
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 92,
+        "y": 127,
+        "w": 820,
+        "h": 754
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "axeman": {
+      "frame": {
+        "x": 1394,
+        "y": 786,
+        "w": 585,
+        "h": 709
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 327,
+        "y": 163,
+        "w": 585,
+        "h": 709
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "swordsman": {
+      "frame": {
+        "x": 1854,
+        "y": 4,
+        "w": 325,
+        "h": 668
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 352,
+        "y": 193,
+        "w": 325,
+        "h": 668
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "spearman": {
+      "frame": {
+        "x": 672,
+        "y": 2570,
+        "w": 678,
+        "h": 642
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 183,
+        "y": 204,
+        "w": 678,
+        "h": 642
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "scout": {
+      "frame": {
+        "x": 672,
+        "y": 3220,
+        "w": 377,
+        "h": 596
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 311,
+        "y": 225,
+        "w": 377,
+        "h": 596
+      },
+      "sourceSize": {
+        "w": 1024,
+        "h": 1024
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "http://github.com/odrick/free-tex-packer-core",
+    "version": "0.3.5",
+    "image": "units.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 2183,
+      "h": 3820
+    },
+    "scale": 1
+  }
+}

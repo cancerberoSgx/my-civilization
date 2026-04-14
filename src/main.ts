@@ -8,7 +8,7 @@
  */
 import { createRoot } from 'react-dom/client'
 import { createElement } from 'react'
-import { Application } from 'pixi.js'
+import { Application, Assets } from 'pixi.js'
 
 import {
   TILE_SIZE,
@@ -83,7 +83,7 @@ gs().setStartGameFn((config: GameConfig) => {
   } satisfies MapgenRequest)
 
   // ── 4. Worker done → build scene ─────────────────────────────────────────
-  worker.onmessage = (e: MessageEvent<MapgenResponse>) => {
+  worker.onmessage = async (e: MessageEvent<MapgenResponse>) => {
     if (e.data.type === 'progress') {
       gs().setLoading(true, e.data.pct, 'Generating world…')
       return
@@ -94,6 +94,15 @@ gs().setStartGameFn((config: GameConfig) => {
 
     const unitCount = new Int32Array(unitCountBuffer)[0]
     gs().setUnitCount(unitCount)
+
+    // Load unit sprite atlas (public/assets/units.json served at /assets/units.json)
+    let unitAtlasTextures: Record<string, import('pixi.js').Texture> = {}
+    try {
+      const sheet = await Assets.load<import('pixi.js').Spritesheet>('/assets/units.json')
+      unitAtlasTextures = sheet.textures
+    } catch {
+      console.warn('Unit sprite atlas not found — falling back to letter badges.')
+    }
 
     // ── Camera viewport ────────────────────────────────────────────────────
     const viewport = new CameraViewport({
@@ -111,7 +120,7 @@ gs().setStartGameFn((config: GameConfig) => {
 
     // ── Textures ───────────────────────────────────────────────────────────
     const tf  = new TextureFactory(app.renderer)
-    const utf = new UnitTextureFactory(app.renderer, config.civColors)
+    const utf = new UnitTextureFactory(app.renderer, config.civColors, unitAtlasTextures)
 
     // ── Renderers ──────────────────────────────────────────────────────────
     const tileRenderer = new TileRenderer(tf, tileBuffer, viewport, config.mapWidth, config.mapHeight)

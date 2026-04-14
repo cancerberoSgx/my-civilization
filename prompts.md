@@ -134,10 +134,36 @@ as a user:
  * I can switch unit movement selection clicking left and right arrow keys
  * I can end turn pressing enter (only if end-turn action is available)
 
+p5
 as a user I can override unit movement path. If I select the unit I can right click another tile and redefine the current path
 
 
-images
+# unit images
 
 can you help me using the right pixi.js assets packager so each unit is represented with transparent pngs in data/set1/units folder ? 
+Create the necessary scripts to package individual image pngs to selected pixi.js assets package so we can add/edit more images and re-pack
+
+
+# game serialization
+
+User should be able to save and load a game, this is the entire map, units and even units-routes
+let the user save the game, load a game. Use local storage. 
+Also allow the user to save the game as .json file so they can continue the game in another device
+
+
+# FUTURE
+
+
+# world builder
+
+from the menu I can trigger the world builder which allows me:
+
+ * i can add any unit belonging to any player on any tile. I see a list of players and a list of units, I can select a unit and then click on one tile of the map to add it there
+
+ * I can exit the game builder and continue playing
+
+# minimap
+
+As a user I can see a minimap displaying the entire map in a component. clicking the minimap will take me to that location in the main map
+I can toggle minimap on-off from the top menu
 
