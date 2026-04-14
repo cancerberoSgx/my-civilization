@@ -335,6 +335,16 @@ async function buildGameScene(
       tileRenderer.setSelected(-1, -1); unitRenderer.selectUnit(-1)
     }
     if (ev.key === 'm' || ev.key === 'M') gs().toggleMinimap()
+    if (ev.key === 'c' || ev.key === 'C') {
+      const uid = game.activeUnitId
+      if (uid >= 0) {
+        const off = uid * UNIT_STRIDE
+        const tx  = unitView.getUint16(off + UNIT_X_OFF, true)
+        const ty  = unitView.getUint16(off + UNIT_Y_OFF, true)
+        viewport.zoom(1 - viewport.scale.x)
+        viewport.moveCenter(tx * TILE_SIZE + TILE_SIZE / 2, ty * TILE_SIZE + TILE_SIZE / 2)
+      }
+    }
     if (ev.key === ' ') {
       ev.preventDefault()
       game.skipActiveUnit()
