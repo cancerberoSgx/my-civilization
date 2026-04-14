@@ -30,6 +30,8 @@ export class CameraViewport extends Container {
   private dragLastY = 0
   private readonly FRICTION = 0.90
 
+  private readonly _abort = new AbortController()
+
   constructor(opts: {
     screenWidth:  number
     screenHeight: number
@@ -100,6 +102,12 @@ export class CameraViewport extends Container {
     return this
   }
 
+  /** Remove all canvas event listeners bound by this viewport. */
+  destroy(): void {
+    this._abort.abort()
+    super.destroy()
+  }
+
   /** Call from the PixiJS ticker for deceleration. */
   update(): void {
     if (this.isDragging) return
@@ -141,6 +149,8 @@ export class CameraViewport extends Container {
   }
 
   private _bindCanvas(canvas: HTMLCanvasElement): void {
+    const signal = this._abort.signal
+
     // ── Wheel zoom ──────────────────────────────────────────────────────────
     canvas.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault()
@@ -153,7 +163,7 @@ export class CameraViewport extends Container {
       const newScale  = Math.max(this.minZoom, Math.min(this.maxZoom, this.scale.x * factor))
       this._zoomAt(newScale, pivotX, pivotY)
       this.emit('zoomed')
-    }, { passive: false })
+    }, { passive: false, signal })
 
     // ── Pointer drag ────────────────────────────────────────────────────────
     canvas.addEventListener('pointerdown', (e: PointerEvent) => {
@@ -164,7 +174,7 @@ export class CameraViewport extends Container {
       this.dragLastY   = e.clientY
       this.velX = this.velY = 0
       canvas.setPointerCapture(e.pointerId)
-    })
+    }, { signal })
 
     canvas.addEventListener('pointermove', (e: PointerEvent) => {
       if (!this.isDragging) return
@@ -178,20 +188,20 @@ export class CameraViewport extends Container {
       this.dragLastY = e.clientY
       this._clamp()
       this.emit('moved')
-    })
+    }, { signal })
 
     canvas.addEventListener('pointerup', (e: PointerEvent) => {
       if (this.isDragging) {
         this.isDragging = false
         try { canvas.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
       }
-    })
+    }, { signal })
 
     canvas.addEventListener('pointercancel', (e: PointerEvent) => {
       this.isDragging = false
       try { canvas.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
-    })
+    }, { signal })
 
-    canvas.addEventListener('contextmenu', e => e.preventDefault())
+    canvas.addEventListener('contextmenu', e => e.preventDefault(), { signal })
   }
 }

@@ -3,9 +3,15 @@ import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
 import { Minimap } from './Minimap'
 import { BuilderPanel } from './BuilderPanel'
+import { FileMenu } from './FileMenu'
 import { CIV_PALETTE } from '../shared/constants'
 import { MapLayout } from '../shared/types'
 import type { GameConfig } from '../shared/types'
+import {
+  listSaves, loadFromLocalStorage, defaultSaveName,
+  readJsonFile,
+} from '../shared/saveFormat'
+import type { SaveEntry } from '../shared/saveFormat'
 
 export function App(): React.ReactElement {
   const gameConfig    = useGameStore(s => s.gameConfig)
@@ -48,10 +54,17 @@ const LAYOUT_OPTIONS: { value: MapLayout; label: string; desc: string }[] = [
 ]
 
 function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React.ReactElement {
+  const loadSave = useGameStore(s => s.loadSave)
+
   const [mapWidth,  setMapWidth]  = useState(80)
   const [mapHeight, setMapHeight] = useState(80)
   const [numCivs,   setNumCivs]   = useState(2)
   const [layout,    setLayout]    = useState<MapLayout>(MapLayout.Continents)
+
+  // Load-saves section state
+  const [showLoadList, setShowLoadList] = useState(false)
+  const [saves,        setSaves]        = useState<SaveEntry[]>([])
+  const [loadStatus,   setLoadStatus]   = useState('')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -60,6 +73,29 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
     const n = Math.max(2,  Math.min(CIV_PALETTE.length - 1, numCivs))
     const civColors = CIV_PALETTE.slice(0, n + 1)
     onStart({ mapWidth: w, mapHeight: h, numCivs: n, civColors, layout })
+  }
+
+  function openLoadList() {
+    setSaves(listSaves())
+    setLoadStatus('')
+    setShowLoadList(true)
+  }
+
+  function handleLoadSave(key: string) {
+    const save = loadFromLocalStorage(key)
+    if (!save) { setLoadStatus('Save not found'); return }
+    loadSave(save)
+  }
+
+  async function handleImportFile() {
+    try {
+      const save = await readJsonFile()
+      if (save.version !== 1) throw new Error('Unsupported save version')
+      loadSave(save)
+    } catch (e) {
+      const msg = (e as Error).message
+      if (msg !== 'No file selected') setLoadStatus(`Error: ${msg}`)
+    }
   }
 
   const selectedDesc = LAYOUT_OPTIONS.find(o => o.value === layout)?.desc ?? ''
@@ -130,6 +166,45 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
 
         <button type="submit" style={startBtnStyle}>New Game</button>
       </form>
+
+      {/* Load saved game section */}
+      <div style={menuLoadSection}>
+        <div style={menuDivider}>— or load a saved game —</div>
+
+        {!showLoadList ? (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <button style={loadBtnStyle} onClick={openLoadList}>Load Save</button>
+            <button style={loadBtnStyle} onClick={handleImportFile}>Import .json</button>
+          </div>
+        ) : (
+          <div style={loadListBox}>
+            {saves.length === 0 && (
+              <div style={{ color: '#555', fontSize: 12, textAlign: 'center', padding: '6px 0' }}>
+                No saves found
+              </div>
+            )}
+            {saves.map(entry => (
+              <div key={entry.key} style={loadRowStyle}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#ddd', fontSize: 12 }}>{entry.name}</div>
+                  <div style={{ color: '#555', fontSize: 10 }}>{new Date(entry.savedAt).toLocaleString()}</div>
+                </div>
+                <button style={loadSmallBtnStyle} onClick={() => handleLoadSave(entry.key)}>Load</button>
+              </div>
+            ))}
+            <button
+              style={{ ...loadBtnStyle, marginTop: 6, width: '100%', textAlign: 'center' }}
+              onClick={() => setShowLoadList(false)}
+            >
+              ← Back
+            </button>
+          </div>
+        )}
+
+        {loadStatus && (
+          <div style={{ color: '#f88', fontSize: 11, textAlign: 'center', marginTop: 4 }}>{loadStatus}</div>
+        )}
+      </div>
     </div>
   )
 }
@@ -216,6 +291,8 @@ function GameHUD(): React.ReactElement {
         >
           Builder
         </button>
+
+        <FileMenu />
 
         <span style={{ ...hudItem, opacity: 0.45, fontSize: 11 }}>
           Drag · scroll · click · right-click to move
@@ -326,6 +403,59 @@ const startBtnStyle: React.CSSProperties = {
   cursor:       'pointer',
   letterSpacing:'0.05em',
   marginTop:    4,
+}
+
+const menuLoadSection: React.CSSProperties = {
+  width:       320,
+  marginTop:   10,
+  fontFamily:  'monospace',
+}
+
+const menuDivider: React.CSSProperties = {
+  color:     'rgba(170,212,255,0.3)',
+  fontSize:  11,
+  textAlign: 'center',
+  marginBottom: 10,
+}
+
+const loadBtnStyle: React.CSSProperties = {
+  padding:      '5px 14px',
+  fontSize:     12,
+  fontFamily:   'monospace',
+  background:   'rgba(255,255,255,0.06)',
+  border:       '1px solid rgba(255,255,255,0.18)',
+  borderRadius: 4,
+  color:        '#aaa',
+  cursor:       'pointer',
+}
+
+const loadListBox: React.CSSProperties = {
+  maxHeight:   180,
+  overflowY:   'auto',
+  background:  'rgba(0,0,0,0.3)',
+  border:      '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 4,
+  padding:     '4px 0',
+}
+
+const loadRowStyle: React.CSSProperties = {
+  display:     'flex',
+  alignItems:  'center',
+  gap:         8,
+  padding:     '4px 10px',
+  borderBottom:'1px solid rgba(255,255,255,0.05)',
+}
+
+const loadSmallBtnStyle: React.CSSProperties = {
+  padding:      '2px 8px',
+  fontSize:     11,
+  fontFamily:   'monospace',
+  background:   'rgba(34,102,204,0.2)',
+  border:       '1px solid rgba(68,150,255,0.4)',
+  borderRadius: 3,
+  color:        '#88ccff',
+  cursor:       'pointer',
+  flexShrink:   0,
 }
 
 const loadingOverlay: React.CSSProperties = {

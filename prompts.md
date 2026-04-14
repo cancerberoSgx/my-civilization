@@ -159,12 +159,25 @@ from the menu I can trigger the game builder which allows me:
  * I can add or remove  improvements from a tile
  * I can exit the game builder and continue playing
 
-# FUTURE
-
-
 
 # game serialization
 
-User should be able to save and load a game, this is the entire map, units and even units-routes
+User should be able to save and load a game, this is the entire map, units and even units-movement-routes
 let the user save the game, load a game. Use local storage. 
 Also allow the user to save the game as .json file so they can continue the game in another device
+In main menu there's a submenu file->save... and user can name the save, by default userName+timetamp
+In main menu there's a submenu file->load... user can choose from all previously saved games
+In main menu there's a submenu file->save as file... user can download the game as json file
+In main menu there's a submenu file->load from file... user can select a local .json file to load the game
+
+
+
+
+# FUTURE
+
+
+# unit actions
+
+besides moving, units can also perform actions. Depending on the current unit tile, actions can vary. 
+For example, settlers can found a city and they are transformed into another unmovable unit called "city"
+Workers can build roads so unit movement on roads multiplies x3, or irrigate a tile if it's adjacent to fresh water which gives more food  or build a mine in a hill or some particular resources which gives more production. shields  on current tile

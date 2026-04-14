@@ -19,6 +19,7 @@ import {
   MAX_UNITS,
 } from '../shared/constants'
 import { TerrainType, UnitTypeId } from '../shared/types'
+import type { SavedGameState } from '../shared/saveFormat'
 import { UNIT_MAP } from '../data/units'
 
 // ── Player definition ─────────────────────────────────────────────────────────
@@ -83,6 +84,8 @@ export class Game {
   private _activeUnitId = -1
   // Stored multi-turn movement orders: uid → remaining waypoints (not including current position)
   private _unitPaths = new Map<number, Array<{ x: number; y: number }>>()
+  // Pending AI turn timer (kept so stop() can cancel it)
+  private _aiTimeout: ReturnType<typeof setTimeout> | null = null
 
   private readonly unitView:  DataView
   private readonly unitBytes: Uint8Array
@@ -120,6 +123,69 @@ export class Game {
   /** Call once after wiring callbacks. */
   start(): void {
     this._beginTurn()
+  }
+
+  /** Cancel any in-flight AI timer so a scene rebuild won't receive stale callbacks. */
+  stop(): void {
+    if (this._aiTimeout !== null) {
+      clearTimeout(this._aiTimeout)
+      this._aiTimeout = null
+    }
+  }
+
+  // ── Serialisation ─────────────────────────────────────────────────────────
+
+  serialize(): SavedGameState {
+    return {
+      turnNumber:       this.turnNumber,
+      currentPlayerIdx: this.currentPlayerIdx,
+      activeUnitId:     this._activeUnitId,
+      pendingIds:       [...this._pendingIds],
+      unitPaths:        [...this._unitPaths.entries()].map(([uid, path]) => ({
+        uid,
+        path: path.map(p => ({ x: p.x, y: p.y })),
+      })),
+    }
+  }
+
+  /**
+   * Restore internal state from a saved snapshot.
+   * Must be called BEFORE resumeAfterLoad() and AFTER callbacks (game.cb) are wired.
+   * The tile/unit SABs must already contain the saved byte data.
+   */
+  restoreState(state: SavedGameState): void {
+    this.turnNumber       = state.turnNumber
+    this.currentPlayerIdx = state.currentPlayerIdx
+    this._activeUnitId    = state.activeUnitId
+    this._pendingIds      = new Set(state.pendingIds)
+    this._unitPaths       = new Map(
+      state.unitPaths.map(({ uid, path }) => [uid, path.map(p => ({ x: p.x, y: p.y }))])
+    )
+  }
+
+  /**
+   * Fire all UI callbacks to match the restored state.
+   * Call once after restoreState() — equivalent to game.start() for a fresh game.
+   */
+  resumeAfterLoad(): void {
+    const player = this.currentPlayer
+    this.cb.onTurnStart(player, this.turnNumber, this._pendingIds.size)
+
+    if (!player.isHuman) {
+      // Unlikely to save mid-AI-turn, but handle it gracefully
+      this._runAITurn()
+      return
+    }
+
+    const uid = this._activeUnitId
+    this._validMoves = this._computeValidMoves(uid)
+    this.cb.onActiveUnitChanged(uid)
+    this.cb.onValidMovesChanged(this._validMoves)
+    this.cb.onPathChanged(uid >= 0 ? (this._unitPaths.get(uid) ?? []) : [])
+
+    if (this._pendingIds.size === 0) {
+      this.cb.onAllUnitsDone()
+    }
   }
 
   /**
@@ -317,7 +383,10 @@ export class Game {
     for (const uid of [...this._pendingIds]) {
       this._moveRandom(uid)
     }
-    setTimeout(() => this._nextTurn(), 120)
+    this._aiTimeout = setTimeout(() => {
+      this._aiTimeout = null
+      this._nextTurn()
+    }, 120)
   }
 
   private _moveRandom(uid: number): void {

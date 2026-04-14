@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { TileInfo, SelectedUnit, GameConfig } from '../shared/types'
 import { UnitTypeId, TerrainType, ResourceType, ImprovementType } from '../shared/types'
 import type { Player } from '../game/Game'
+import type { SaveFile } from '../shared/saveFormat'
 
 export interface ViewportBounds {
   left: number
@@ -41,6 +42,12 @@ interface GameStore {
   skipAll:       (() => void) | null
   /** Set by main.ts; called when the user clicks New Game */
   startGameFn:   ((config: GameConfig) => void) | null
+
+  // ── Save / Load ───────────────────────────────────────────────────────────────
+  /** Non-null while a load is in progress — checked by startGameFn to skip mapgen. */
+  pendingLoad:  SaveFile | null
+  /** Set by main.ts after scene build; returns a SaveFile with the given name. */
+  saveGameFn:   ((name: string) => SaveFile) | null
 
   // ── Game Builder ─────────────────────────────────────────────────────────────
   builderMode:            boolean
@@ -82,6 +89,11 @@ interface GameStore {
   setBuilderResourceType(r: ResourceType): void
   setBuilderImprovementType(i: ImprovementType): void
   setBuilderApply(fn: (tx: number, ty: number) => void): void
+
+  setPendingLoad(save: SaveFile | null): void
+  setSaveGameFn(fn: (name: string) => SaveFile): void
+  /** Trigger a load: sets pendingLoad, then calls startGame so the startGameFn restores from save. */
+  loadSave(save: SaveFile): void
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -106,6 +118,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   skipUnit:    null,
   skipAll:     null,
   startGameFn: null,
+
+  pendingLoad:  null,
+  saveGameFn:   null,
 
   builderMode:            false,
   builderTab:             'unit',
@@ -154,4 +169,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setBuilderResourceType: (r)   => set({ builderResourceType: r }),
   setBuilderImprovementType: (i) => set({ builderImprovementType: i }),
   setBuilderApply:        (fn)  => set({ builderApply: fn }),
+
+  setPendingLoad: (save) => set({ pendingLoad: save }),
+  setSaveGameFn:  (fn)   => set({ saveGameFn: fn }),
+  loadSave: (save) => {
+    set({ pendingLoad: save })
+    get().startGame(save.config)
+  },
 }))
