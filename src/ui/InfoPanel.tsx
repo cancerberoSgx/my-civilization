@@ -1,6 +1,5 @@
 import React from 'react'
 import { useGameStore } from './store'
-import { CIV_COLORS } from '../shared/constants'
 
 const civName = (id: number) => ['', 'Blue', 'Red', 'Green', 'Yellow'][id] ?? `Civ ${id}`
 
@@ -9,8 +8,9 @@ function hexColor(n: number): string {
 }
 
 export function InfoPanel(): React.ReactElement | null {
-  const tile = useGameStore(s => s.selectedTile)
-  const unit = useGameStore(s => s.selectedUnit)
+  const tile      = useGameStore(s => s.selectedTile)
+  const unit      = useGameStore(s => s.selectedUnit)
+  const civColors = useGameStore(s => s.civColors)
 
   if (!tile && !unit) return null
 
@@ -40,7 +40,7 @@ export function InfoPanel(): React.ReactElement | null {
                 width: 10,
                 height: 10,
                 borderRadius: '50%',
-                background: hexColor(CIV_COLORS[unit.civ] ?? 0x888888),
+                background: hexColor(civColors[unit.civ] ?? 0x888888),
                 marginRight: 6,
                 verticalAlign: 'middle',
               }}

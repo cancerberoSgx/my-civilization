@@ -5,9 +5,8 @@
 import { Container, Sprite } from 'pixi.js'
 import type { CameraViewport } from "./CameraViewport"
 import {
-  MAP_WIDTH, MAP_HEIGHT, TILE_SIZE,
+  TILE_SIZE,
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF, UNIT_CIV_OFF, UNIT_HP_OFF, UNIT_MOVES_OFF,
-  CIV_COLORS,
 } from '../shared/constants'
 import { UnitTypeId } from '../shared/types'
 import type { UnitTextureFactory } from './UnitTextureFactory'
@@ -36,6 +35,8 @@ export class UnitRenderer {
   constructor(
     private utf: UnitTextureFactory,
     private viewport: CameraViewport,
+    private mapWidth: number,
+    private mapHeight: number,
   ) {
     viewport.on('moved',  () => this.update())
     viewport.on('zoomed', () => this.update())
@@ -117,9 +118,9 @@ export class UnitRenderer {
 
     const vp = this.viewport
     const minTX = Math.max(0,          Math.floor(vp.left   / TILE_SIZE) - 2)
-    const maxTX = Math.min(MAP_WIDTH  - 1, Math.ceil(vp.right  / TILE_SIZE) + 2)
-    const minTY = Math.max(0,          Math.floor(vp.top    / TILE_SIZE) - 2)
-    const maxTY = Math.min(MAP_HEIGHT - 1, Math.ceil(vp.bottom / TILE_SIZE) + 2)
+    const maxTX = Math.min(this.mapWidth  - 1, Math.ceil(vp.right  / TILE_SIZE) + 2)
+    const minTY = Math.max(0,                  Math.floor(vp.top    / TILE_SIZE) - 2)
+    const maxTY = Math.min(this.mapHeight - 1, Math.ceil(vp.bottom / TILE_SIZE) + 2)
 
     const toShow = new Set<number>()
 

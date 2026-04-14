@@ -22,7 +22,7 @@ import { execSync } from "node:child_process";
 
 const MODEL = "gemini-3.1-flash-image-preview";
 const BG_COLOR = "#00ff00";
-const FUZZ = "1%"; // ImageMagick colour-match tolerance
+const FUZZ = "3%"; // ImageMagick colour-match tolerance
 const DELAY_MS = 2000; // pause between API calls to avoid rate-limit
 
 const UNITS_JSON = path.resolve(
@@ -172,8 +172,46 @@ async function main(): Promise<void> {
   console.log(`\nDone — ${ok} succeeded, ${failed} failed.`);
 }
 
-async function  applyTransparencyAgain() {
+async function applyTransparencyAgain(): Promise<void> {
+  if (!fs.existsSync(OUT_DIR)) {
+    console.error(`Error: output dir not found: ${OUT_DIR}`);
+    process.exit(1);
+  }
 
+  const cmd = magickCmd();
+  const rawFiles = fs.readdirSync(OUT_DIR).filter(
+    (f) => f.endsWith(".png") && !f.endsWith("-transparent.png"),
+  );
+
+  if (rawFiles.length === 0) {
+    console.log("No raw PNG files found in tmp_units/");
+    return;
+  }
+
+  console.log(`Re-applying transparency to ${rawFiles.length} files (cmd: ${cmd})\n`);
+
+  let ok = 0;
+  let failed = 0;
+
+  for (const file of rawFiles) {
+    const rawPng = path.join(OUT_DIR, file);
+    const transparentPng = path.join(OUT_DIR, file.replace(/\.png$/, "-transparent.png"));
+    try {
+      const bg = execSync(`${cmd} "${rawPng}" -format "%[pixel:p{0,0}]" info:`).toString().trim();
+      execSync(`${cmd} "${rawPng}" -fuzz ${FUZZ} -transparent "${bg}" "${transparentPng}"`);
+      console.log(`  ok     ${file}  (bg: ${bg})`);
+      ok++;
+    } catch (err) {
+      console.error(`  error  ${file}:`, err instanceof Error ? err.message : err);
+      failed++;
+    }
+  }
+
+  console.log(`\nDone — ${ok} succeeded, ${failed} failed.`);
 }
 
-main();
+if (process.argv.includes("--regenerate-transparency")) {
+  applyTransparencyAgain();
+} else {
+  main();
+}

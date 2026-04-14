@@ -7,7 +7,7 @@ import {
   TILE_IMPROVEMENT, TILE_OWNER, TILE_VISIBILITY,
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF,
   UNIT_CIV_OFF, UNIT_HP_OFF, UNIT_MOVES_OFF,
-  MAX_UNITS, NUM_CIVS,
+  MAX_UNITS,
 } from '../shared/constants'
 import {
   TerrainType, FeatureType, ResourceType, ImprovementType, UnitTypeId,
@@ -58,7 +58,7 @@ function fbm(x: number, y: number, octaves: number, seed: number): number {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 self.onmessage = (e: MessageEvent<MapgenRequest>) => {
-  const { tileBuffer, unitBuffer, unitCountBuffer, mapWidth, mapHeight, seed } = e.data
+  const { tileBuffer, unitBuffer, unitCountBuffer, mapWidth, mapHeight, numCivs, seed } = e.data
 
   const tiles     = new Uint8Array(tileBuffer)
   const units     = new Uint8Array(unitBuffer)
@@ -179,49 +179,64 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
     }
   }
 
-  // ── 2. Place units ──────────────────────────────────────────────────────────
-  // Land unit types (not Galley which needs water)
-  const landTypes = [
-    UnitTypeId.Warrior, UnitTypeId.Archer, UnitTypeId.Settler, UnitTypeId.Worker,
-    UnitTypeId.Spearman, UnitTypeId.Swordsman, UnitTypeId.Knight, UnitTypeId.Catapult,
-  ]
-  const navalTypes = [UnitTypeId.Galley]
+  // ── 2. Place starting units ─────────────────────────────────────────────────
+  // Each civ starts with exactly: Settler, Worker, Scout, Warrior
+  // All 4 units are placed in a 3×3 cluster around a random land starting tile.
 
-  const UNITS_PER_CIV = Math.floor(MAX_UNITS / NUM_CIVS)
+  const startingUnits: UnitTypeId[] = [
+    UnitTypeId.Settler,
+    UnitTypeId.Worker,
+    UnitTypeId.Scout,
+    UnitTypeId.Warrior,
+  ]
+
+  function isLandStart(terrain: TerrainType): boolean {
+    return terrain !== TerrainType.Ocean &&
+           terrain !== TerrainType.Coast &&
+           terrain !== TerrainType.Mountain
+  }
+
   let total = 0
 
-  for (let civ = 1; civ <= NUM_CIVS && total < MAX_UNITS; civ++) {
-    let placed = 0, attempts = 0
-    while (placed < UNITS_PER_CIV && attempts < UNITS_PER_CIV * 8 && total < MAX_UNITS) {
-      attempts++
+  for (let civ = 1; civ <= numCivs && total < MAX_UNITS; civ++) {
+    // Find a valid land starting tile (up to 10 000 attempts)
+    let sx = -1, sy = -1
+    for (let a = 0; a < 10_000 && sx < 0; a++) {
       const tx = rng.int(mapWidth)
       const ty = rng.int(mapHeight)
-      const tidx = (ty * mapWidth + tx) * TILE_STRIDE
-      const terrain = tiles[tidx + TILE_TERRAIN] as TerrainType
-      const isWater = terrain === TerrainType.Ocean || terrain === TerrainType.Coast
-      const isMountain = terrain === TerrainType.Mountain
+      const terrain = tiles[(ty * mapWidth + tx) * TILE_STRIDE + TILE_TERRAIN] as TerrainType
+      if (isLandStart(terrain)) { sx = tx; sy = ty }
+    }
+    if (sx < 0) continue  // no valid land found (shouldn't happen)
 
-      let unitType: UnitTypeId
-      if (isWater) {
-        // Only place naval units on water (small fraction)
-        if (rng.next() > 0.05) continue
-        unitType = navalTypes[rng.int(navalTypes.length)]
-      } else if (isMountain) {
-        continue
-      } else {
-        unitType = landTypes[rng.int(landTypes.length)]
+    // Place each unit in the 3×3 neighbourhood around the start, avoiding repeats
+    const usedTiles = new Set<number>()
+
+    for (const unitType of startingUnits) {
+      if (total >= MAX_UNITS) break
+
+      // Search 3×3 around start for an unused valid land tile
+      let px = sx, py = sy  // fallback: stack on start
+      outer:
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const tx = sx + dx, ty = sy + dy
+          if (tx < 0 || tx >= mapWidth || ty < 0 || ty >= mapHeight) continue
+          const key = ty * mapWidth + tx
+          if (usedTiles.has(key)) continue
+          const terrain = tiles[key * TILE_STRIDE + TILE_TERRAIN] as TerrainType
+          if (isLandStart(terrain)) { px = tx; py = ty; usedTiles.add(key); break outer }
+        }
       }
 
       const off = total * UNIT_STRIDE
-      unitView.setUint16(off + UNIT_X_OFF, tx, true)
-      unitView.setUint16(off + UNIT_Y_OFF, ty, true)
+      unitView.setUint16(off + UNIT_X_OFF, px, true)
+      unitView.setUint16(off + UNIT_Y_OFF, py, true)
       units[off + UNIT_TYPE_OFF]  = unitType
       units[off + UNIT_CIV_OFF]   = civ
       units[off + UNIT_HP_OFF]    = 100
-      units[off + UNIT_MOVES_OFF] = 2
-
+      units[off + UNIT_MOVES_OFF] = 1
       total++
-      placed++
     }
   }
 

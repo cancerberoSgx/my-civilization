@@ -12,7 +12,6 @@
  * functions set after construction — no circular imports.
  */
 import {
-  MAP_WIDTH, MAP_HEIGHT,
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF, UNIT_CIV_OFF,
   UNIT_HP_OFF, UNIT_MOVES_OFF,
   TILE_STRIDE, TILE_TERRAIN,
@@ -29,10 +28,15 @@ export interface Player {
   color: number     // 0xRRGGBB for UI display
 }
 
-export const DEFAULT_PLAYERS: Player[] = [
-  { id: 1, name: 'Player 1', isHuman: true,  color: 0x2266cc },
-  { id: 2, name: 'AI',       isHuman: false, color: 0xcc2222 },
-]
+/** Build a players array from config — player 1 is human, rest are AI. */
+export function buildPlayers(numCivs: number, civColors: number[]): Player[] {
+  return Array.from({ length: numCivs }, (_, i) => ({
+    id:      i + 1,
+    name:    i === 0 ? 'Player 1' : `AI ${i}`,
+    isHuman: i === 0,
+    color:   civColors[i + 1] ?? 0x888888,
+  }))
+}
 
 // ── Callbacks wired by main.ts ────────────────────────────────────────────────
 
@@ -54,11 +58,13 @@ export interface GameCallbacks {
 export class Game {
   readonly players:   Player[]
   readonly unitCount: number
+  readonly mapWidth:  number
+  readonly mapHeight: number
 
   private currentPlayerIdx = 0
   private turnNumber       = 1
 
-  // Encoded tile key (y * MAP_WIDTH + x) for each valid move destination
+  // Encoded tile key (y * mapWidth + x) for each valid move destination
   private _validMoves  = new Set<number>()
   // Unit ids that still need to act this turn
   private _pendingIds  = new Set<number>()
@@ -75,10 +81,14 @@ export class Game {
     unitBuffer:  SharedArrayBuffer,
     tileBuffer:  SharedArrayBuffer,
     unitCount:   number,
-    players = DEFAULT_PLAYERS,
+    mapWidth:    number,
+    mapHeight:   number,
+    players:     Player[],
   ) {
     this.players   = players
     this.unitCount = unitCount
+    this.mapWidth  = mapWidth
+    this.mapHeight = mapHeight
     this.unitView  = new DataView(unitBuffer)
     this.unitBytes = new Uint8Array(unitBuffer)
     this.tileBytes = new Uint8Array(tileBuffer)
@@ -106,7 +116,7 @@ export class Game {
   requestMove(toX: number, toY: number): boolean {
     if (this._activeUnitId < 0 || !this.currentPlayer.isHuman) return false
 
-    const tileKey = toY * MAP_WIDTH + toX
+    const tileKey = toY * this.mapWidth + toX
     if (!this._validMoves.has(tileKey)) return false
 
     const uid = this._activeUnitId
@@ -201,7 +211,7 @@ export class Game {
     for (const [dx, dy] of dirs) {
       const tx = ux + dx
       const ty = uy + dy
-      if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) continue
+      if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) continue
       if (!this._passable(uid, tx, ty)) continue
       const fx = ux, fy = uy
       this._applyMove(uid, tx, ty)
@@ -265,9 +275,9 @@ export class Game {
         if (dx === 0 && dy === 0) continue
         const tx = ux + dx
         const ty = uy + dy
-        if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) continue
+        if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) continue
         if (this._passable(uid, tx, ty)) {
-          result.add(ty * MAP_WIDTH + tx)
+          result.add(ty * this.mapWidth + tx)
         }
       }
     }
@@ -279,7 +289,7 @@ export class Game {
     const typeId = this.unitBytes[uOff + UNIT_TYPE_OFF] as UnitTypeId
     const naval  = UNIT_MAP.get(typeId)?.isNaval ?? false
 
-    const tOff   = (ty * MAP_WIDTH + tx) * TILE_STRIDE
+    const tOff   = (ty * this.mapWidth + tx) * TILE_STRIDE
     const terr   = this.tileBytes[tOff + TILE_TERRAIN] as TerrainType
 
     if (naval) {

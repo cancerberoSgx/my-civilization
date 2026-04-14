@@ -1,8 +1,5 @@
-export const MAP_WIDTH  = 500
-export const MAP_HEIGHT = 500
 export const TILE_SIZE  = 64   // pixels per tile at zoom 1.0
 export const MAX_UNITS  = 10_000
-export const NUM_CIVS   = 4
 
 // --- Tile buffer layout (6 bytes per tile) ---
 export const TILE_STRIDE      = 6
@@ -23,14 +20,18 @@ export const UNIT_HP_OFF     = 6  // Uint8
 export const UNIT_MOVES_OFF  = 7  // Uint8
 
 // --- Viewport ---
-export const MIN_ZOOM = 0.15
-export const MAX_ZOOM = 3.0
+export const MIN_ZOOM = 0.1
+export const MAX_ZOOM = 4.0
 
-// Civ colours (index 1-4)
-export const CIV_COLORS = [
+// Available civ colours — index 0 unused; supports up to 8 civs
+export const CIV_PALETTE = [
   0x000000, // 0 = unused
   0x2266cc, // 1 blue
   0xcc2222, // 2 red
   0x22aa44, // 3 green
   0xccaa00, // 4 yellow
+  0xaa44cc, // 5 purple
+  0xcc7700, // 6 orange
+  0x22aaaa, // 7 teal
+  0xcc22aa, // 8 pink
 ]

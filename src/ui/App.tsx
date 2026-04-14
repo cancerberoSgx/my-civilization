@@ -1,11 +1,112 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
+import { CIV_PALETTE } from '../shared/constants'
+import type { GameConfig } from '../shared/types'
 
 export function App(): React.ReactElement {
+  const gameConfig    = useGameStore(s => s.gameConfig)
   const isLoading     = useGameStore(s => s.isLoading)
   const progress      = useGameStore(s => s.loadingProgress)
   const msg           = useGameStore(s => s.loadingMsg)
+  const startGame     = useGameStore(s => s.startGame)
+
+  // ── Screen routing ─────────────────────────────────────────────────────────
+  if (gameConfig === null) {
+    return <NewGameMenu onStart={startGame} />
+  }
+
+  if (isLoading) {
+    return (
+      <div style={loadingOverlay}>
+        <div style={loadingBox}>
+          <div style={loadingTitle}>Civ TS</div>
+          <div style={loadingMsgStyle}>{msg}</div>
+          <div style={barTrack}>
+            <div style={{ ...barFill, width: `${progress}%` }} />
+          </div>
+          <div style={{ color: '#aaa', fontSize: 12, marginTop: 8 }}>{progress}%</div>
+        </div>
+      </div>
+    )
+  }
+
+  return <GameHUD />
+}
+
+// ── New Game menu ─────────────────────────────────────────────────────────────
+
+function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React.ReactElement {
+  const [mapWidth,  setMapWidth]  = useState(80)
+  const [mapHeight, setMapHeight] = useState(80)
+  const [numCivs,   setNumCivs]   = useState(2)
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const w = Math.max(20, Math.min(500, mapWidth))
+    const h = Math.max(20, Math.min(500, mapHeight))
+    const n = Math.max(2,  Math.min(CIV_PALETTE.length - 1, numCivs))
+    const civColors = CIV_PALETTE.slice(0, n + 1)
+    onStart({ mapWidth: w, mapHeight: h, numCivs: n, civColors })
+  }
+
+  return (
+    <div style={menuOverlay}>
+      <form style={menuBox} onSubmit={handleSubmit}>
+        <div style={loadingTitle}>Civ TS</div>
+
+        <div style={fieldGroup}>
+          <label style={labelStyle}>Map Width</label>
+          <input
+            type="number" min={20} max={500} value={mapWidth}
+            onChange={e => setMapWidth(Number(e.target.value))}
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={fieldGroup}>
+          <label style={labelStyle}>Map Height</label>
+          <input
+            type="number" min={20} max={500} value={mapHeight}
+            onChange={e => setMapHeight(Number(e.target.value))}
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={fieldGroup}>
+          <label style={labelStyle}>Civilizations</label>
+          <input
+            type="number" min={2} max={CIV_PALETTE.length - 1} value={numCivs}
+            onChange={e => setNumCivs(Number(e.target.value))}
+            style={inputStyle}
+          />
+        </div>
+
+        {/* Civ colour preview */}
+        <div style={civPreviewRow}>
+          {Array.from({ length: Math.max(2, Math.min(CIV_PALETTE.length - 1, numCivs)) }, (_, i) => (
+            <span
+              key={i}
+              title={i === 0 ? 'Player 1' : `AI ${i}`}
+              style={{
+                width: 14, height: 14, borderRadius: '50%',
+                background: `#${(CIV_PALETTE[i + 1] ?? 0x888888).toString(16).padStart(6, '0')}`,
+                display: 'inline-block',
+                boxShadow: `0 0 4px #${(CIV_PALETTE[i + 1] ?? 0x888888).toString(16).padStart(6, '0')}`,
+              }}
+            />
+          ))}
+        </div>
+
+        <button type="submit" style={startBtnStyle}>New Game</button>
+      </form>
+    </div>
+  )
+}
+
+// ── In-game HUD ───────────────────────────────────────────────────────────────
+
+function GameHUD(): React.ReactElement {
   const turn          = useGameStore(s => s.turn)
   const unitCount     = useGameStore(s => s.unitCount)
   const currentPlayer = useGameStore(s => s.currentPlayer)
@@ -16,104 +117,186 @@ export function App(): React.ReactElement {
   const skipUnit      = useGameStore(s => s.skipUnit)
   const skipAll       = useGameStore(s => s.skipAll)
 
-  // Convert player color number to CSS hex string
   const playerColorCss = currentPlayer
     ? `#${currentPlayer.color.toString(16).padStart(6, '0')}`
     : '#aaa'
-
   const isHumanTurn = currentPlayer?.isHuman ?? false
 
   return (
     <>
       {/* Top HUD bar */}
-      {!isLoading && (
-        <div style={hudStyle}>
-          <span style={hudItem}>Turn <b>{turn}</b></span>
-          <span style={hudItem}>Units <b>{unitCount.toLocaleString()}</b></span>
+      <div style={hudStyle}>
+        <span style={hudItem}>Turn <b>{turn}</b></span>
+        <span style={hudItem}>Units <b>{unitCount.toLocaleString()}</b></span>
 
-          {/* Current player indicator */}
-          {currentPlayer && (
-            <span style={{ ...hudItem, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{
-                width: 10, height: 10, borderRadius: '50%',
-                background: playerColorCss,
-                display: 'inline-block',
-                boxShadow: `0 0 5px ${playerColorCss}`,
-              }} />
-              <b style={{ color: playerColorCss }}>{currentPlayer.name}</b>
-              <span style={{ color: '#888', fontSize: 11 }}>{phaseLabel}</span>
-            </span>
-          )}
-
-          {/* Pending count badge */}
-          {isHumanTurn && pendingCount > 0 && (
-            <span style={pendingBadge}>{pendingCount} to move</span>
-          )}
-
-          <span style={{ flex: 1 }} />
-
-          {/* Skip / End Turn buttons */}
-          {isHumanTurn && (
-            <>
-              <button
-                style={btnStyle}
-                onClick={() => skipUnit?.()}
-                title="Skip active unit (Space)"
-              >
-                Skip Unit
-              </button>
-              <button
-                style={btnStyle}
-                onClick={() => skipAll?.()}
-                title="Skip all remaining units"
-              >
-                Skip All
-              </button>
-              <button
-                style={{ ...btnStyle, ...(canEndTurn ? btnEndTurnActive : btnEndTurnDisabled) }}
-                disabled={!canEndTurn}
-                onClick={() => { if (canEndTurn) endTurn?.() }}
-                title="End Turn (Enter)"
-              >
-                End Turn
-              </button>
-            </>
-          )}
-
-          <span style={{ ...hudItem, opacity: 0.45, fontSize: 11 }}>
-            Drag · scroll · click · right-click to move
+        {currentPlayer && (
+          <span style={{ ...hudItem, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: playerColorCss,
+              display: 'inline-block',
+              boxShadow: `0 0 5px ${playerColorCss}`,
+            }} />
+            <b style={{ color: playerColorCss }}>{currentPlayer.name}</b>
+            <span style={{ color: '#888', fontSize: 11 }}>{phaseLabel}</span>
           </span>
-        </div>
-      )}
+        )}
 
-      {/* Loading overlay */}
-      {isLoading && (
-        <div style={loadingOverlay}>
-          <div style={loadingBox}>
-            <div style={loadingTitle}>Civ TS</div>
-            <div style={loadingMsgStyle}>{msg}</div>
-            <div style={barTrack}>
-              <div style={{ ...barFill, width: `${progress}%` }} />
-            </div>
-            <div style={{ color: '#aaa', fontSize: 12, marginTop: 8 }}>{progress}%</div>
-          </div>
-        </div>
-      )}
+        {isHumanTurn && pendingCount > 0 && (
+          <span style={pendingBadge}>{pendingCount} to move</span>
+        )}
+
+        <span style={{ flex: 1 }} />
+
+        {isHumanTurn && (
+          <>
+            <button style={btnStyle} onClick={() => skipUnit?.()} title="Skip active unit (Space)">
+              Skip Unit
+            </button>
+            <button style={btnStyle} onClick={() => skipAll?.()} title="Skip all remaining units">
+              Skip All
+            </button>
+            <button
+              style={{ ...btnStyle, ...(canEndTurn ? btnEndTurnActive : btnEndTurnDisabled) }}
+              disabled={!canEndTurn}
+              onClick={() => { if (canEndTurn) endTurn?.() }}
+              title="End Turn (Enter)"
+            >
+              End Turn
+            </button>
+          </>
+        )}
+
+        <span style={{ ...hudItem, opacity: 0.45, fontSize: 11 }}>
+          Drag · scroll · click · right-click to move
+        </span>
+      </div>
 
       {/* Tile / unit info panel */}
-      {!isLoading && <InfoPanel />}
+      <InfoPanel />
 
-      {/* Keyboard hints (bottom-right) */}
-      {!isLoading && (
-        <div style={hintsStyle}>
-          <span>Arrows/WASD · scroll · click · right-click move · Space skip · Enter end turn</span>
-        </div>
-      )}
+      {/* Keyboard hints */}
+      <div style={hintsStyle}>
+        <span>Arrows/WASD · scroll · click · right-click move · Space skip · Enter end turn</span>
+      </div>
     </>
   )
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
+
+const menuOverlay: React.CSSProperties = {
+  position:       'absolute',
+  inset:          0,
+  display:        'flex',
+  alignItems:     'center',
+  justifyContent: 'center',
+  background:     'rgba(5,5,18,0.97)',
+  pointerEvents:  'auto',
+}
+
+const menuBox: React.CSSProperties = {
+  width:       320,
+  textAlign:   'center',
+  fontFamily:  'monospace',
+  color:       '#e0e0e0',
+  display:     'flex',
+  flexDirection: 'column',
+  gap:         14,
+}
+
+const fieldGroup: React.CSSProperties = {
+  display:       'flex',
+  alignItems:    'center',
+  justifyContent:'space-between',
+  gap:           12,
+}
+
+const labelStyle: React.CSSProperties = {
+  color:    '#aad4ff',
+  fontSize: 13,
+  flex:     1,
+  textAlign:'left',
+}
+
+const inputStyle: React.CSSProperties = {
+  width:       90,
+  padding:     '4px 8px',
+  fontSize:    13,
+  fontFamily:  'monospace',
+  background:  'rgba(255,255,255,0.07)',
+  border:      '1px solid rgba(255,255,255,0.2)',
+  borderRadius: 4,
+  color:       '#e0e0e0',
+  textAlign:   'right',
+}
+
+const civPreviewRow: React.CSSProperties = {
+  display:        'flex',
+  justifyContent: 'center',
+  gap:            8,
+  marginTop:      -4,
+}
+
+const startBtnStyle: React.CSSProperties = {
+  padding:      '8px 0',
+  fontSize:     14,
+  fontFamily:   'monospace',
+  fontWeight:   700,
+  background:   'rgba(34,102,204,0.3)',
+  border:       '1px solid rgba(68,170,255,0.6)',
+  borderRadius: 6,
+  color:        '#88ccff',
+  cursor:       'pointer',
+  letterSpacing:'0.05em',
+  marginTop:    4,
+}
+
+const loadingOverlay: React.CSSProperties = {
+  position:       'absolute',
+  inset:          0,
+  display:        'flex',
+  alignItems:     'center',
+  justifyContent: 'center',
+  background:     'rgba(5,5,18,0.95)',
+  pointerEvents:  'auto',
+}
+
+const loadingBox: React.CSSProperties = {
+  width:       320,
+  textAlign:   'center',
+  fontFamily:  'monospace',
+  color:       '#e0e0e0',
+}
+
+const loadingTitle: React.CSSProperties = {
+  fontSize:     36,
+  fontWeight:   700,
+  color:        '#aad4ff',
+  marginBottom: 12,
+  letterSpacing:'0.1em',
+}
+
+const loadingMsgStyle: React.CSSProperties = {
+  fontSize:     14,
+  color:        '#aaa',
+  marginBottom: 16,
+}
+
+const barTrack: React.CSSProperties = {
+  width:        '100%',
+  height:       6,
+  background:   'rgba(255,255,255,0.1)',
+  borderRadius: 3,
+  overflow:     'hidden',
+}
+
+const barFill: React.CSSProperties = {
+  height:       '100%',
+  background:   'linear-gradient(90deg, #2266cc, #44aaff)',
+  borderRadius: 3,
+  transition:   'width 0.2s ease',
+}
 
 const hudStyle: React.CSSProperties = {
   position:      'absolute',
@@ -168,52 +351,6 @@ const btnEndTurnActive: React.CSSProperties = {
 const btnEndTurnDisabled: React.CSSProperties = {
   opacity: 0.35,
   cursor:  'not-allowed',
-}
-
-const loadingOverlay: React.CSSProperties = {
-  position:       'absolute',
-  inset:          0,
-  display:        'flex',
-  alignItems:     'center',
-  justifyContent: 'center',
-  background:     'rgba(5,5,18,0.95)',
-  pointerEvents:  'auto',
-}
-
-const loadingBox: React.CSSProperties = {
-  width:       320,
-  textAlign:   'center',
-  fontFamily:  'monospace',
-  color:       '#e0e0e0',
-}
-
-const loadingTitle: React.CSSProperties = {
-  fontSize:     36,
-  fontWeight:   700,
-  color:        '#aad4ff',
-  marginBottom: 12,
-  letterSpacing:'0.1em',
-}
-
-const loadingMsgStyle: React.CSSProperties = {
-  fontSize:     14,
-  color:        '#aaa',
-  marginBottom: 16,
-}
-
-const barTrack: React.CSSProperties = {
-  width:        '100%',
-  height:       6,
-  background:   'rgba(255,255,255,0.1)',
-  borderRadius: 3,
-  overflow:     'hidden',
-}
-
-const barFill: React.CSSProperties = {
-  height:       '100%',
-  background:   'linear-gradient(90deg, #2266cc, #44aaff)',
-  borderRadius: 3,
-  transition:   'width 0.2s ease',
 }
 
 const hintsStyle: React.CSSProperties = {

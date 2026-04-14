@@ -10,6 +10,7 @@ export const UNIT_DEFS: UnitDef[] = [
   { id: UnitTypeId.Knight,    name: 'Knight',    letter: 'N', strength: 8,  movement: 2, isNaval: false },
   { id: UnitTypeId.Catapult,  name: 'Catapult',  letter: 'C', strength: 5,  movement: 1, isNaval: false },
   { id: UnitTypeId.Galley,    name: 'Galley',    letter: 'G', strength: 3,  movement: 3, isNaval: true  },
+  { id: UnitTypeId.Scout,     name: 'Scout',     letter: 'O', strength: 1,  movement: 2, isNaval: false },
 ]
 
 export const UNIT_MAP = new Map(UNIT_DEFS.map(u => [u.id, u]))

@@ -1,8 +1,12 @@
 import { create } from 'zustand'
-import type { TileInfo, SelectedUnit } from '../shared/types'
+import type { TileInfo, SelectedUnit, GameConfig } from '../shared/types'
 import type { Player } from '../game/Game'
 
 interface GameStore {
+  // ── New-game config (null = show menu) ──────────────────────────────────────
+  gameConfig:    GameConfig | null
+  civColors:     number[]
+
   // ── Loading ─────────────────────────────────────────────────────────────────
   isLoading:       boolean
   loadingProgress: number
@@ -23,16 +27,20 @@ interface GameStore {
   /** Phase label shown in the HUD */
   phaseLabel:     string
 
-  // ── Game action hooks (wired from main.ts after game is created) ────────────
-  endTurn:  (() => void) | null
-  skipUnit: (() => void) | null
-  skipAll:  (() => void) | null
+  // ── Wired callbacks ──────────────────────────────────────────────────────────
+  endTurn:       (() => void) | null
+  skipUnit:      (() => void) | null
+  skipAll:       (() => void) | null
+  /** Set by main.ts; called when the user clicks New Game */
+  startGameFn:   ((config: GameConfig) => void) | null
 
   // ── Actions ──────────────────────────────────────────────────────────────────
+  /** Called from the New Game menu — stores config and triggers init */
+  startGame(config: GameConfig): void
+  setStartGameFn(fn: (config: GameConfig) => void): void
   setLoading(isLoading: boolean, progress?: number, msg?: string): void
   setSelectedTile(tile: TileInfo | null): void
   setSelectedUnit(unit: SelectedUnit | null): void
-  setTurn(turn: number): void
   setUnitCount(n: number): void
   setTurnState(player: Player, turn: number, pendingCount: number, canEndTurn: boolean, phaseLabel: string): void
   setPendingCount(n: number): void
@@ -40,10 +48,13 @@ interface GameStore {
   setGameActions(endTurn: () => void, skipUnit: () => void, skipAll: () => void): void
 }
 
-export const useGameStore = create<GameStore>((set) => ({
-  isLoading:       true,
+export const useGameStore = create<GameStore>((set, get) => ({
+  gameConfig:      null,
+  civColors:       [],
+
+  isLoading:       false,
   loadingProgress: 0,
-  loadingMsg:      'Initialising…',
+  loadingMsg:      '',
 
   selectedTile:  null,
   selectedUnit:  null,
@@ -55,16 +66,23 @@ export const useGameStore = create<GameStore>((set) => ({
   canEndTurn:    false,
   phaseLabel:    '',
 
-  endTurn:  null,
-  skipUnit: null,
-  skipAll:  null,
+  endTurn:     null,
+  skipUnit:    null,
+  skipAll:     null,
+  startGameFn: null,
+
+  startGame: (config) => {
+    set({ gameConfig: config, civColors: config.civColors })
+    get().startGameFn?.(config)
+  },
+
+  setStartGameFn: (fn) => set({ startGameFn: fn }),
 
   setLoading:      (isLoading, progress = 0, msg = '') =>
     set({ isLoading, loadingProgress: progress, loadingMsg: msg }),
 
   setSelectedTile: (tile) => set({ selectedTile: tile }),
   setSelectedUnit: (unit) => set({ selectedUnit: unit }),
-  setTurn:         (turn) => set({ turn }),
   setUnitCount:    (n)    => set({ unitCount: n }),
 
   setTurnState:    (player, turn, pendingCount, canEndTurn, phaseLabel) =>

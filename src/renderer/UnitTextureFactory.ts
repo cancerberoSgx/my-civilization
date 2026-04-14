@@ -3,7 +3,6 @@
  * Uses renderer.generateTexture() — the PixiJS v8 off-screen render API.
  */
 import { Graphics, Text, Container, Rectangle, type Renderer, type Texture } from 'pixi.js'
-import { CIV_COLORS } from '../shared/constants'
 import { UNIT_MAP }    from '../data/units'
 import { UnitTypeId }  from '../shared/types'
 
@@ -12,7 +11,10 @@ const BADGE = 36  // badge size in pixels
 export class UnitTextureFactory {
   private cache = new Map<string, Texture>()
 
-  constructor(private renderer: Renderer) {}
+  constructor(
+    private renderer: Renderer,
+    private civColors: number[],
+  ) {}
 
   get(civId: number, unitTypeId: UnitTypeId): Texture {
     const key = `${civId}_${unitTypeId}`
@@ -21,7 +23,7 @@ export class UnitTextureFactory {
   }
 
   private build(civId: number, unitTypeId: UnitTypeId, key: string): Texture {
-    const civColor = CIV_COLORS[civId] ?? 0x888888
+    const civColor = this.civColors[civId] ?? 0x888888
     const letter   = UNIT_MAP.get(unitTypeId)?.letter ?? '?'
 
     const container = new Container()

@@ -17,7 +17,7 @@
 import { Container, Sprite, type Texture } from 'pixi.js'
 import type { CameraViewport } from './CameraViewport'
 import {
-  MAP_WIDTH, MAP_HEIGHT, TILE_SIZE,
+  TILE_SIZE,
   TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT,
 } from '../shared/constants'
 import { TerrainType, FeatureType, ResourceType, ImprovementType } from '../shared/types'
@@ -47,7 +47,7 @@ export class TileRenderer {
   /** Valid-move green overlays — sits between improve and unit layers */
   readonly moveLayer      = new Container()
 
-  // key = tileIndex (y * MAP_WIDTH + x)
+  // key = tileIndex (y * mapWidth + x)
   private active = new Map<number, TileRecord>()
 
   // Sprite pools (one pool per layer; all sprites start off-stage)
@@ -77,6 +77,8 @@ export class TileRenderer {
     private tf: TextureFactory,
     tileBuffer: SharedArrayBuffer,
     viewport: CameraViewport,
+    private mapWidth: number,
+    private mapHeight: number,
   ) {
     this.tiles = new Uint8Array(tileBuffer)
 
@@ -106,10 +108,10 @@ export class TileRenderer {
 
   /** Set hovered tile (call from pointer-move handler). */
   setHover(tileX: number, tileY: number): void {
-    const idx = tileY * MAP_WIDTH + tileX
+    const idx = tileY * this.mapWidth + tileX
     if (idx === this.hoveredTile) return
     this.hoveredTile = idx
-    if (tileX >= 0 && tileX < MAP_WIDTH && tileY >= 0 && tileY < MAP_HEIGHT) {
+    if (tileX >= 0 && tileX < this.mapWidth && tileY >= 0 && tileY < this.mapHeight) {
       this.hoverSprite.position.set(tileX * TILE_SIZE, tileY * TILE_SIZE)
       this.hoverSprite.visible = true
     } else {
@@ -119,12 +121,12 @@ export class TileRenderer {
 
   /** Set selected tile. Pass (-1, -1) to clear selection. */
   setSelected(tileX: number, tileY: number): void {
-    if (tileX < 0 || tileY < 0 || tileX >= MAP_WIDTH || tileY >= MAP_HEIGHT) {
+    if (tileX < 0 || tileY < 0 || tileX >= this.mapWidth || tileY >= this.mapHeight) {
       this.selectedTile = -1
       this.selectSprite.visible = false
       return
     }
-    const idx = tileY * MAP_WIDTH + tileX
+    const idx = tileY * this.mapWidth + tileX
     if (idx === this.selectedTile) {
       // Second click on same tile → deselect
       this.selectedTile = -1
@@ -149,8 +151,8 @@ export class TileRenderer {
     this.activeMoveSprites = []
 
     for (const key of moves) {
-      const tx = key % MAP_WIDTH
-      const ty = Math.floor(key / MAP_WIDTH)
+      const tx = key % this.mapWidth
+      const ty = Math.floor(key / this.mapWidth)
       const s  = this._getMoveSprite()
       s.position.set(tx * TILE_SIZE, ty * TILE_SIZE)
       s.visible = true
@@ -170,13 +172,13 @@ export class TileRenderer {
 
   /** Returns terrain type at tile, or -1 if out of range. */
   getTerrainAt(tx: number, ty: number): TerrainType | -1 {
-    if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return -1
-    return this.tiles[(ty * MAP_WIDTH + tx) * TILE_STRIDE + TILE_TERRAIN] as TerrainType
+    if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) return -1
+    return this.tiles[(ty * this.mapWidth + tx) * TILE_STRIDE + TILE_TERRAIN] as TerrainType
   }
 
   getRawTile(tx: number, ty: number): { terrain: number; feature: number; resource: number; improvement: number } | null {
-    if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return null
-    const base = (ty * MAP_WIDTH + tx) * TILE_STRIDE
+    if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) return null
+    const base = (ty * this.mapWidth + tx) * TILE_STRIDE
     return {
       terrain:     this.tiles[base + TILE_TERRAIN],
       feature:     this.tiles[base + TILE_FEATURE],
@@ -193,8 +195,8 @@ export class TileRenderer {
 
     // Release tiles that scrolled out of view
     for (const [idx, rec] of this.active) {
-      const tx = idx % MAP_WIDTH
-      const ty = Math.floor(idx / MAP_WIDTH)
+      const tx = idx % this.mapWidth
+      const ty = Math.floor(idx / this.mapWidth)
       if (!this.inRange(tx, ty, newRange)) {
         this.release(rec)
         this.active.delete(idx)
@@ -204,7 +206,7 @@ export class TileRenderer {
     // Acquire tiles that are now in view
     for (let ty = newRange.minY; ty <= newRange.maxY; ty++) {
       for (let tx = newRange.minX; tx <= newRange.maxX; tx++) {
-        const idx = ty * MAP_WIDTH + tx
+        const idx = ty * this.mapWidth + tx
         if (this.active.has(idx)) continue
         const rec = this.acquire(tx, ty)
         this.active.set(idx, rec)
@@ -216,10 +218,10 @@ export class TileRenderer {
 
   private calcRange(viewport: CameraViewport): VisibleRange {
     return {
-      minX: Math.max(0,            Math.floor(viewport.left  / TILE_SIZE) - PAD),
-      maxX: Math.min(MAP_WIDTH  - 1, Math.ceil(viewport.right  / TILE_SIZE) + PAD),
-      minY: Math.max(0,            Math.floor(viewport.top   / TILE_SIZE) - PAD),
-      maxY: Math.min(MAP_HEIGHT - 1, Math.ceil(viewport.bottom / TILE_SIZE) + PAD),
+      minX: Math.max(0,                Math.floor(viewport.left   / TILE_SIZE) - PAD),
+      maxX: Math.min(this.mapWidth  - 1, Math.ceil(viewport.right  / TILE_SIZE) + PAD),
+      minY: Math.max(0,                Math.floor(viewport.top    / TILE_SIZE) - PAD),
+      maxY: Math.min(this.mapHeight - 1, Math.ceil(viewport.bottom / TILE_SIZE) + PAD),
     }
   }
 
@@ -232,7 +234,7 @@ export class TileRenderer {
   }
 
   private acquire(tx: number, ty: number): TileRecord {
-    const base = (ty * MAP_WIDTH + tx) * TILE_STRIDE
+    const base = (ty * this.mapWidth + tx) * TILE_STRIDE
     const terrainId  = this.tiles[base + TILE_TERRAIN]    as TerrainType
     const featureId  = this.tiles[base + TILE_FEATURE]    as FeatureType
     const resourceId = this.tiles[base + TILE_RESOURCE]   as ResourceType

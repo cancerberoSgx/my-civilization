@@ -54,6 +54,7 @@ export enum UnitTypeId {
   Knight    = 6,
   Catapult  = 7,
   Galley    = 8,
+  Scout     = 9,
 }
 
 // ── Definition interfaces ────────────────────────────────────────────────────
@@ -116,6 +117,16 @@ export interface SelectedUnit {
   strength:  number
 }
 
+// ── Game configuration (set by New Game menu) ─────────────────────────────────
+
+export interface GameConfig {
+  mapWidth:  number
+  mapHeight: number
+  numCivs:   number
+  /** index 0 unused; [1..numCivs] are the hex colours for each civ */
+  civColors: number[]
+}
+
 // ── Worker messages ──────────────────────────────────────────────────────────
 
 export interface MapgenRequest {
@@ -125,6 +136,7 @@ export interface MapgenRequest {
   unitCountBuffer: SharedArrayBuffer
   mapWidth:        number
   mapHeight:       number
+  numCivs:         number
   seed:            number
 }
 

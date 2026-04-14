@@ -237,3 +237,13 @@ bg=$(convert input2.png -format "%[pixel:p{0,0}]" info:)
 convert input2.png -fuzz 20% -transparent "$bg" output2.png
 
 in scripts/src/generate-unit-images.ts, implement the function applyTransparencyAgain() which will re-generate x-transparent.png files by executing the imagemagick commands again. The script will execute only that funcion if --regenerate-transparency is passed in cli command
+
+
+
+# board
+
+Concepts such as MAP_WIDTH, MAP_HEIGHT, NUM_CIVS, and CIV_COLORS which currently are defined in src/shared/constants.ts should be part of Game class and not hardcoded
+Before loading the map, there's a menu which have an option "new game" where user can enter map width, height, and number of civs. Only after new game is created, the map is rendered using those values. 
+
+when game start, each player has only these units: 1 settler, 1 worker 1 scout and 1 warrior 
+
