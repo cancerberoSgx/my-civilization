@@ -13,7 +13,19 @@ import type { UnitTextureFactory } from './UnitTextureFactory'
 import type { SelectedUnit } from '../shared/types'
 import { UNIT_MAP } from '../data/units'
 
-const SPRITE_SIZE = TILE_SIZE
+const SPRITE_SIZE    = TILE_SIZE
+const ANIM_DURATION  = 500   // ms per move step
+
+interface Anim {
+  sprite:  Sprite
+  fromX:   number   // world-pixel start of current step
+  fromY:   number
+  toX:     number   // world-pixel end of current step
+  toY:     number
+  t0:      number   // performance.now() at step start
+  /** Steps queued behind the current one (multi-move units) */
+  pending: Array<{ toX: number; toY: number }>
+}
 
 export class UnitRenderer {
   readonly layer = new Container()
@@ -31,6 +43,15 @@ export class UnitRenderer {
   /** Currently active (game-focused) unit id (-1 if none) */
   private activeId   = -1
 
+  /** In-flight move animations keyed by unit id */
+  private anims = new Map<number, Anim>()
+  private _rafId: number | null = null
+  private _onRaf = (): void => {
+    this._rafId = null
+    this._tickAnims()
+    if (this.anims.size > 0) this._startRaf()
+  }
+
   constructor(
     private utf: UnitTextureFactory,
     private viewport: CameraViewport,
@@ -42,6 +63,7 @@ export class UnitRenderer {
   }
 
   setBuffers(unitBuffer: SharedArrayBuffer, count: number): void {
+    this.anims.clear()   // cancel any in-flight animations
     this.unitView  = new DataView(unitBuffer)
     this.unitBytes = new Uint8Array(unitBuffer)
     this.unitCount = count
@@ -53,6 +75,7 @@ export class UnitRenderer {
     if (!this.unitView) return -1
     for (let i = 0; i < this.unitCount; i++) {
       const off = i * UNIT_STRIDE
+      if (this.unitBytes[off + UNIT_CIV_OFF] === 0) continue   // deleted unit
       const ux = this.unitView.getUint16(off + UNIT_X_OFF, true)
       const uy = this.unitView.getUint16(off + UNIT_Y_OFF, true)
       if (ux === tx && uy === ty) return i
@@ -125,15 +148,17 @@ export class UnitRenderer {
 
     for (let i = 0; i < this.unitCount; i++) {
       const off = i * UNIT_STRIDE
+      if (this.unitBytes[off + UNIT_CIV_OFF] === 0) continue   // deleted unit
       const tx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
       const ty  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
       if (tx < minTX || tx > maxTX || ty < minTY || ty > maxTY) continue
       toShow.add(i)
     }
 
-    // Release units no longer visible
+    // Release units no longer visible (keep animating sprites alive)
     for (const [id, sprite] of this.active) {
       if (!toShow.has(id)) {
+        if (this.anims.has(id)) continue   // animation owns this sprite until it finishes
         sprite.visible = false
         this.pool.push(sprite)
         this.active.delete(id)
@@ -157,6 +182,66 @@ export class UnitRenderer {
       sprite.visible = true
       this._applyTint(id, sprite)
       this.active.set(id, sprite)
+    }
+  }
+
+  /**
+   * Slide unit `uid` from tile (fromTX, fromTY) to (toTX, toTY) over ANIM_DURATION ms.
+   * Multiple calls for the same unit while it is already animating are queued and
+   * play back-to-back (handles multi-move units like Knights or Galleys).
+   * Off-screen units are skipped — they snap to position when scrolled into view.
+   */
+  animateMove(uid: number, fromTX: number, fromTY: number, toTX: number, toTY: number): void {
+    const toX = toTX * TILE_SIZE
+    const toY = toTY * TILE_SIZE
+
+    const existing = this.anims.get(uid)
+    if (existing) {
+      existing.pending.push({ toX, toY })
+      return
+    }
+
+    const sprite = this.active.get(uid)
+    if (!sprite) return   // off-screen — update() will place it at destination when visible
+
+    sprite.position.set(fromTX * TILE_SIZE, fromTY * TILE_SIZE)
+    this.anims.set(uid, {
+      sprite,
+      fromX: fromTX * TILE_SIZE,
+      fromY: fromTY * TILE_SIZE,
+      toX,
+      toY,
+      t0:      performance.now(),
+      pending: [],
+    })
+    this._startRaf()
+  }
+
+  private _startRaf(): void {
+    if (this._rafId === null) this._rafId = requestAnimationFrame(this._onRaf)
+  }
+
+  private _tickAnims(): void {
+    const now = performance.now()
+    for (const [uid, anim] of this.anims) {
+      const t    = Math.min(1, (now - anim.t0) / ANIM_DURATION)
+      const ease = 1 - Math.pow(1 - t, 3)   // cubic ease-out
+      anim.sprite.x = anim.fromX + (anim.toX - anim.fromX) * ease
+      anim.sprite.y = anim.fromY + (anim.toY - anim.fromY) * ease
+
+      if (t >= 1) {
+        if (anim.pending.length > 0) {
+          const next  = anim.pending.shift()!
+          anim.fromX  = anim.toX
+          anim.fromY  = anim.toY
+          anim.toX    = next.toX
+          anim.toY    = next.toY
+          anim.t0     = now
+        } else {
+          anim.sprite.position.set(anim.toX, anim.toY)
+          this.anims.delete(uid)
+        }
+      }
     }
   }
 

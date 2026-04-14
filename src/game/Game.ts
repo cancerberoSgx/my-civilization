@@ -18,9 +18,11 @@ import {
   TILE_STRIDE, TILE_TERRAIN,
   MAX_UNITS,
 } from '../shared/constants'
-import { TerrainType, UnitTypeId } from '../shared/types'
+import { TerrainType, UnitTypeId, ActionId } from '../shared/types'
+import type { ActionDef, ActionContext } from '../shared/types'
 import type { SavedGameState } from '../shared/saveFormat'
 import { UNIT_MAP } from '../data/units'
+import { ACTION_DEFS } from '../data/actions'
 
 // ── Player definition ─────────────────────────────────────────────────────────
 
@@ -63,6 +65,12 @@ export interface GameCallbacks {
    * Fired every time a new unit becomes active (empty array if no stored path).
    */
   onPathChanged(path: ReadonlyArray<{ x: number; y: number }>): void
+  /**
+   * Called when the unit roster changes (unit removed or added outside of
+   * normal movement — e.g. a Settler founding a City).  The renderer should
+   * reload its buffer view with the new unit count.
+   */
+  onUnitsChanged(unitCount: number): void
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────────
@@ -345,6 +353,85 @@ export class Game {
     return uid
   }
 
+  // ── Unit actions ──────────────────────────────────────────────────────────
+
+  /**
+   * Returns the actions currently available for unit `uid`.
+   * Fortify is prepended for every unit that still has moves.
+   * Unit-specific actions are appended when their canPerform predicate passes.
+   */
+  getAvailableActions(uid: number): ActionDef[] {
+    if (uid < 0 || uid >= this.unitCount) return []
+    const off      = uid * UNIT_STRIDE
+    const typeId   = this.unitBytes[off + UNIT_TYPE_OFF] as UnitTypeId
+    const civId    = this.unitBytes[off + UNIT_CIV_OFF]
+    const x        = this.unitView.getUint16(off + UNIT_X_OFF, true)
+    const y        = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    const movesLeft = this.unitBytes[off + UNIT_MOVES_OFF]
+
+    const ctx: ActionContext = {
+      tileBytes: this.tileBytes,
+      mapWidth:  this.mapWidth,
+      mapHeight: this.mapHeight,
+      unit: { typeId, civId, x, y, movesLeft },
+    }
+
+    const result: ActionDef[] = []
+
+    // Fortify is universal — available whenever the unit still has moves
+    const fortify = ACTION_DEFS.get(ActionId.Fortify)!
+    if (fortify.canPerform(ctx)) result.push(fortify)
+
+    // Unit-specific actions declared on the UnitDef
+    for (const actionId of (UNIT_MAP.get(typeId)?.actions ?? [])) {
+      const def = ACTION_DEFS.get(actionId)
+      if (def && def.canPerform(ctx)) result.push(def)
+    }
+
+    return result
+  }
+
+  /**
+   * Execute `actionId` for unit `uid`.  Returns false if the action is not
+   * available or the current player is not human.
+   */
+  performAction(uid: number, actionId: ActionId): boolean {
+    if (!this.currentPlayer.isHuman) return false
+    if (uid < 0 || uid >= this.unitCount) return false
+
+    switch (actionId) {
+      case ActionId.Fortify:
+        // Fortify = skip this unit for the turn
+        if (uid === this._activeUnitId) this.skipActiveUnit()
+        return true
+
+      case ActionId.FoundCity: {
+        const off   = uid * UNIT_STRIDE
+        const tx    = this.unitView.getUint16(off + UNIT_X_OFF, true)
+        const ty    = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+        const civId = this.unitBytes[off + UNIT_CIV_OFF]
+
+        // Remove settler from pending/path tracking
+        this._pendingIds.delete(uid)
+        this._unitPaths.delete(uid)
+
+        // Delete settler: civId = 0 means "removed" — skipped by all iteration code
+        this.unitBytes[off + UNIT_CIV_OFF]   = 0
+        this.unitBytes[off + UNIT_MOVES_OFF] = 0
+
+        // Place city at same tile
+        this.placeUnit(tx, ty, UnitTypeId.City, civId)
+
+        this.cb.onUnitsChanged(this.unitCount)
+        this._advanceActiveUnit()
+        return true
+      }
+
+      default:
+        return false
+    }
+  }
+
   // ── Private: turn cycle ────────────────────────────────────────────────────
 
   private _beginTurn(): void {
@@ -352,12 +439,13 @@ export class Game {
     this._pendingIds = new Set()
 
     for (let i = 0; i < this.unitCount; i++) {
-      const off    = i * UNIT_STRIDE
-      if (this.unitBytes[off + UNIT_CIV_OFF] === player.id) {
-        const typeId = this.unitBytes[off + UNIT_TYPE_OFF] as UnitTypeId
-        this.unitBytes[off + UNIT_MOVES_OFF] = UNIT_MAP.get(typeId)?.movement ?? 1
-        this._pendingIds.add(i)
-      }
+      const off = i * UNIT_STRIDE
+      if (this.unitBytes[off + UNIT_CIV_OFF] !== player.id) continue
+      const typeId   = this.unitBytes[off + UNIT_TYPE_OFF] as UnitTypeId
+      const movement = UNIT_MAP.get(typeId)?.movement ?? 1
+      if (movement === 0) continue   // immovable units (cities) don't join the turn cycle
+      this.unitBytes[off + UNIT_MOVES_OFF] = movement
+      this._pendingIds.add(i)
     }
 
     this.cb.onTurnStart(player, this.turnNumber, this._pendingIds.size)

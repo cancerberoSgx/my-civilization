@@ -43,10 +43,10 @@ export class TextureFactory {
     for (const def of TERRAIN_MAP.values()) {
       const g = new Graphics()
       g.rect(0, 0, TS, TS).fill(def.color)
-      g.rect(0, 0, TS, 1).fill({ color: 0xffffff, alpha: 0.15 })
-      g.rect(0, 0, 1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
-      g.rect(0, TS-1, TS, 1).fill({ color: 0x000000, alpha: 0.20 })
-      g.rect(TS-1, 0, 1, TS).fill({ color: 0x000000, alpha: 0.12 })
+      // g.rect(0, 0, TS, 1).fill({ color: 0xffffff, alpha: 0.15 })
+      // g.rect(0, 0, 1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
+      // g.rect(0, TS-1, TS, 1).fill({ color: 0x000000, alpha: 0.20 })
+      // g.rect(TS-1, 0, 1, TS).fill({ color: 0x000000, alpha: 0.12 })
       this.terrain.set(def.id, capture(renderer, g))
     }
 

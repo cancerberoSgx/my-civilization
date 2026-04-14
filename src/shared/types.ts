@@ -55,6 +55,35 @@ export enum UnitTypeId {
   Catapult  = 7,
   Galley    = 8,
   Scout     = 9,
+  City      = 10,
+}
+
+// ── Unit actions ─────────────────────────────────────────────────────────────
+
+export enum ActionId {
+  Fortify   = 'fortify',
+  FoundCity = 'found_city',
+  // Future: BuildRoad = 'build_road', Irrigate = 'irrigate', BuildMine = 'build_mine'
+}
+
+export interface ActionContext {
+  tileBytes: Uint8Array
+  mapWidth:  number
+  mapHeight: number
+  unit: {
+    typeId:    UnitTypeId
+    civId:     number
+    x:         number
+    y:         number
+    movesLeft: number
+  }
+}
+
+export interface ActionDef {
+  id:         ActionId
+  label:      string
+  /** Return true when this action is available given the current unit and tile state. */
+  canPerform: (ctx: ActionContext) => boolean
 }
 
 // ── Definition interfaces ────────────────────────────────────────────────────
@@ -79,6 +108,8 @@ export interface UnitDef {
   isNaval:  boolean
   /** Atlas frame name (PNG filename without extension). Undefined = use letter badge. */
   sprite?:  string
+  /** Unit-specific actions (Fortify is universal and not listed here). */
+  actions?: ActionId[]
 }
 
 export interface ResourceDef {

@@ -179,14 +179,29 @@ hitting "C" key, when the map is displayed, it will center the current selected 
 in units.ts each unit define a movement. If a unit.movement is 2 then it can perform two moves in a turn, like knight
 
 
+# unit movements animation
+
+on each turn, when any unit moves (both human and ai player), there should be an animation from tile 1 to tile 2 that translate unit sprite in 0.5 seconds so users realizes what happened
 
 # FUTURE
 
 
 # unit actions
 
+context:
+
 besides moving, units can also perform actions. Depending on the current unit tile, actions can vary. 
 For example, settlers can found a city and they are transformed into another unmovable unit called "city"
-Workers can build roads so unit movement on roads multiplies x3, or irrigate a tile if it's adjacent to fresh water which gives more food  or build a mine in a hill or some particular resources which gives more production. shields  on current tile
-unit actions should not be hardcoded, a developer can define a new unit type with custom actions (don't hardcode them, define them at least in some enum for now)
+Workers can build roads so unit movement on roads multiplies x3, or irrigate a tile if it's adjacent to fresh water which gives more food  or build a mine in a hill or some particular resources which gives extra tile production
+unit actions should not be hardcoded, a developer can define a new unit type with custom actions and their preconditions (don't hardcode them, define them at least in some enum for now)
+
+tasks:
+
+For now define the unit actions model and these particular actions:
+
+ * "fortify" - equivalent to "skip unit". All units support this at any time
+ * settler unit can build a city. This perform the following:
+    * there's a new unit called "city" with movement=0 (cannot move)
+    * the settler unit is deleted
+    * in the same place a new "city" unit is created
 

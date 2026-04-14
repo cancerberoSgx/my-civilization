@@ -178,8 +178,8 @@ async function buildGameScene(
       viewport.moveCenter(tx * TILE_SIZE + TILE_SIZE / 2, ty * TILE_SIZE + TILE_SIZE / 2)
     },
 
-    onUnitMoved(uid, _fx, _fy, _tx, _ty) {
-      unitRenderer.refreshUnit(uid)
+    onUnitMoved(uid, fx, fy, tx, ty) {
+      unitRenderer.animateMove(uid, fx, fy, tx, ty)
     },
 
     onValidMovesChanged(moves) {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { TileInfo, SelectedUnit, GameConfig } from '../shared/types'
-import { UnitTypeId, TerrainType, ResourceType, ImprovementType } from '../shared/types'
+import type { TileInfo, SelectedUnit, GameConfig, ActionDef } from '../shared/types'
+import { UnitTypeId, TerrainType, ResourceType, ImprovementType, ActionId } from '../shared/types'
 import type { Player } from '../game/Game'
 import type { SaveFile } from '../shared/saveFormat'
 
@@ -42,6 +42,12 @@ interface GameStore {
   skipAll:       (() => void) | null
   /** Set by main.ts; called when the user clicks New Game */
   startGameFn:   ((config: GameConfig) => void) | null
+
+  // ── Unit actions ─────────────────────────────────────────────────────────────
+  /** Actions available for the currently focused unit (empty when no unit is active). */
+  availableActions:  ActionDef[]
+  /** Executes an action for the currently game-active unit. */
+  performActionFn:   ((actionId: ActionId) => void) | null
 
   // ── Save / Load ───────────────────────────────────────────────────────────────
   /** Non-null while a load is in progress — checked by startGameFn to skip mapgen. */
@@ -94,6 +100,9 @@ interface GameStore {
   setSaveGameFn(fn: (name: string) => SaveFile): void
   /** Trigger a load: sets pendingLoad, then calls startGame so the startGameFn restores from save. */
   loadSave(save: SaveFile): void
+
+  setAvailableActions(actions: ActionDef[]): void
+  setPerformActionFn(fn: (actionId: ActionId) => void): void
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
