@@ -1,5 +1,6 @@
 import React from 'react'
 import { useGameStore } from './store'
+import type { ActionId } from '../shared/types'
 
 const civName = (id: number) => ['', 'Blue', 'Red', 'Green', 'Yellow'][id] ?? `Civ ${id}`
 
@@ -8,9 +9,12 @@ function hexColor(n: number): string {
 }
 
 export function InfoPanel(): React.ReactElement | null {
-  const tile      = useGameStore(s => s.selectedTile)
-  const unit      = useGameStore(s => s.selectedUnit)
-  const civColors = useGameStore(s => s.civColors)
+  const tile             = useGameStore(s => s.selectedTile)
+  const unit             = useGameStore(s => s.selectedUnit)
+  const civColors        = useGameStore(s => s.civColors)
+  const availableActions = useGameStore(s => s.availableActions)
+  const performActionFn  = useGameStore(s => s.performActionFn)
+  const isHumanTurn      = useGameStore(s => s.currentPlayer?.isHuman ?? false)
 
   if (!tile && !unit) return null
 
@@ -52,6 +56,20 @@ export function InfoPanel(): React.ReactElement | null {
           <Row label="HP"       value={`${unit.hp}/100`}         />
           <Row label="Strength" value={unit.strength}            />
           <Row label="Moves"    value={unit.movesLeft}           />
+
+          {isHumanTurn && availableActions.length > 0 && (
+            <div style={actionsRowStyle}>
+              {availableActions.map(a => (
+                <button
+                  key={a.id}
+                  style={actionBtnStyle}
+                  onClick={() => performActionFn?.(a.id as ActionId)}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
     </div>
@@ -114,4 +132,22 @@ const divider: React.CSSProperties = {
   height:       1,
   background:   'rgba(255,255,255,0.1)',
   margin:       '6px 0',
+}
+
+const actionsRowStyle: React.CSSProperties = {
+  display:   'flex',
+  flexWrap:  'wrap',
+  gap:       6,
+  marginTop: 8,
+}
+
+const actionBtnStyle: React.CSSProperties = {
+  padding:      '3px 10px',
+  fontSize:     11,
+  fontFamily:   'monospace',
+  background:   'rgba(34,102,204,0.25)',
+  border:       '1px solid rgba(68,170,255,0.5)',
+  borderRadius: 4,
+  color:        '#88ccff',
+  cursor:       'pointer',
 }

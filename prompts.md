@@ -183,6 +183,18 @@ in units.ts each unit define a movement. If a unit.movement is 2 then it can per
 
 on each turn, when any unit moves (both human and ai player), there should be an animation from tile 1 to tile 2 that translate unit sprite in 0.5 seconds so users realizes what happened
 
+# see grid
+
+this commented lines in src/renderer/TextureFactory.ts draw the tiles grid (borders between tiles):
+
+      // g.rect(0, 0, TS, 1).fill({ color: 0xffffff, alpha: 0.15 })
+      // g.rect(0, 0, 1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
+      // g.rect(0, TS-1, TS, 1).fill({ color: 0x000000, alpha: 0.20 })
+      // g.rect(TS-1, 0, 1, TS).fill({ color: 0x000000, alpha: 0.12 })
+
+allow the user to toggle grid lines on/off from the menu
+
+
 # FUTURE
 
 
@@ -204,4 +216,5 @@ For now define the unit actions model and these particular actions:
     * there's a new unit called "city" with movement=0 (cannot move)
     * the settler unit is deleted
     * in the same place a new "city" unit is created
+
 

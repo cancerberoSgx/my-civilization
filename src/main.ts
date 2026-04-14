@@ -165,6 +165,7 @@ async function buildGameScene(
 
     onActiveUnitChanged(uid) {
       tileRenderer.setPathPreview([])
+      gs().setAvailableActions(uid >= 0 ? game.getAvailableActions(uid) : [])
       if (uid < 0) {
         tileRenderer.setActiveUnitTile(-1, -1)
         unitRenderer.setActiveUnit(-1)
@@ -180,6 +181,12 @@ async function buildGameScene(
 
     onUnitMoved(uid, fx, fy, tx, ty) {
       unitRenderer.animateMove(uid, fx, fy, tx, ty)
+    },
+
+    onUnitsChanged(unitCount) {
+      unitRenderer.setBuffers(unitBuffer, unitCount)
+      gs().setUnitCount(unitCount)
+      gs().setSelectedUnit(null)
     },
 
     onValidMovesChanged(moves) {
@@ -201,6 +208,8 @@ async function buildGameScene(
     () => game.skipActiveUnit(),
     () => game.skipAllPending(),
   )
+
+  gs().setPerformActionFn(actionId => game.performAction(game.activeUnitId, actionId))
 
   // ── Game Builder ────────────────────────────────────────────────────────────
   gs().setBuilderApply((tx, ty) => {

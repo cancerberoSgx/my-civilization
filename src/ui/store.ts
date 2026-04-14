@@ -128,6 +128,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   skipAll:     null,
   startGameFn: null,
 
+  availableActions: [],
+  performActionFn:  null,
+
   pendingLoad:  null,
   saveGameFn:   null,
 
@@ -185,4 +188,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ pendingLoad: save })
     get().startGame(save.config)
   },
+
+  setAvailableActions: (actions) => set({ availableActions: actions }),
+  setPerformActionFn:  (fn)      => set({ performActionFn: fn }),
 }))
