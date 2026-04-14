@@ -352,9 +352,10 @@ export class Game {
     this._pendingIds = new Set()
 
     for (let i = 0; i < this.unitCount; i++) {
-      const off = i * UNIT_STRIDE
+      const off    = i * UNIT_STRIDE
       if (this.unitBytes[off + UNIT_CIV_OFF] === player.id) {
-        this.unitBytes[off + UNIT_MOVES_OFF] = 1
+        const typeId = this.unitBytes[off + UNIT_TYPE_OFF] as UnitTypeId
+        this.unitBytes[off + UNIT_MOVES_OFF] = UNIT_MAP.get(typeId)?.movement ?? 1
         this._pendingIds.add(i)
       }
     }
@@ -391,22 +392,23 @@ export class Game {
 
   private _moveRandom(uid: number): void {
     const off = uid * UNIT_STRIDE
-    const ux  = this.unitView.getUint16(off + UNIT_X_OFF, true)
-    const uy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
-
-    const dirs = _shuffleDirs()
-    for (const [dx, dy] of dirs) {
-      const tx = ux + dx
-      const ty = uy + dy
-      if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) continue
-      if (!this._passable(uid, tx, ty)) continue
-      const fx = ux, fy = uy
-      this._applyMove(uid, tx, ty)
-      this._pendingIds.delete(uid)
-      this.cb.onUnitMoved(uid, fx, fy, tx, ty)
-      return
+    while (this.unitBytes[off + UNIT_MOVES_OFF] > 0) {
+      const ux   = this.unitView.getUint16(off + UNIT_X_OFF, true)
+      const uy   = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+      const dirs = _shuffleDirs()
+      let moved  = false
+      for (const [dx, dy] of dirs) {
+        const tx = ux + dx
+        const ty = uy + dy
+        if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) continue
+        if (!this._passable(uid, tx, ty)) continue
+        this._applyMove(uid, tx, ty)
+        this.cb.onUnitMoved(uid, ux, uy, tx, ty)
+        moved = true
+        break
+      }
+      if (!moved) this.unitBytes[off + UNIT_MOVES_OFF] = 0  // stuck — exhaust remaining moves
     }
-    this.unitBytes[off + UNIT_MOVES_OFF] = 0
     this._pendingIds.delete(uid)
   }
 
@@ -467,22 +469,27 @@ export class Game {
 
   // ── Private: movement helpers ─────────────────────────────────────────────
 
-  /** Commit one step, fire callbacks, remove unit from pending, advance. */
+  /** Commit one step, fire callbacks. If the unit has moves left it stays active; otherwise advance. */
   private _executeStep(uid: number, toX: number, toY: number): void {
     const off = uid * UNIT_STRIDE
     const fx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
     const fy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
     this._applyMove(uid, toX, toY)
     this.cb.onUnitMoved(uid, fx, fy, toX, toY)
-    this._pendingIds.delete(uid)
-    this._advanceActiveUnit()
+    if (this.unitBytes[off + UNIT_MOVES_OFF] > 0) {
+      // More moves remain — re-focus so path auto-execution or manual input continues
+      this._setActiveUnit(uid, true)
+    } else {
+      this._pendingIds.delete(uid)
+      this._advanceActiveUnit()
+    }
   }
 
   private _applyMove(uid: number, tx: number, ty: number): void {
     const off = uid * UNIT_STRIDE
     this.unitView.setUint16(off + UNIT_X_OFF, tx, true)
     this.unitView.setUint16(off + UNIT_Y_OFF, ty, true)
-    this.unitBytes[off + UNIT_MOVES_OFF] = 0
+    if (this.unitBytes[off + UNIT_MOVES_OFF] > 0) this.unitBytes[off + UNIT_MOVES_OFF]--
   }
 
   private _computeValidMoves(uid: number): Set<number> {

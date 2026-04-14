@@ -170,6 +170,13 @@ In main menu there's a submenu file->load... user can choose from all previously
 In main menu there's a submenu file->save as file... user can download the game as json file
 In main menu there's a submenu file->load from file... user can select a local .json file to load the game
 
+# center unit
+
+hitting "C" key, when the map is displayed, it will center the current selected unit in the map and reset the zoom
+
+# unit movements tiles per turn
+
+in units.ts each unit define a movement. If a unit.movement is 2 then it can perform two moves in a turn, like knight
 
 
 
@@ -181,3 +188,5 @@ In main menu there's a submenu file->load from file... user can select a local .
 besides moving, units can also perform actions. Depending on the current unit tile, actions can vary. 
 For example, settlers can found a city and they are transformed into another unmovable unit called "city"
 Workers can build roads so unit movement on roads multiplies x3, or irrigate a tile if it's adjacent to fresh water which gives more food  or build a mine in a hill or some particular resources which gives more production. shields  on current tile
+unit actions should not be hardcoded, a developer can define a new unit type with custom actions (don't hardcode them, define them at least in some enum for now)
+
