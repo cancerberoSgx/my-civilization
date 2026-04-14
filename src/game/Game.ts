@@ -165,6 +165,40 @@ export class Game {
   }
 
   /**
+   * Focus any own unit for inspection/movement (player clicked it on the map).
+   *
+   * Works for both pending units (still have moves) and spent units (already
+   * moved this turn — lets the player see its stored route in pink).
+   * The unit's stored path is NOT auto-executed so the player can inspect or
+   * override it first.  Returns false for invalid or opponent-owned units.
+   */
+  focusUnit(uid: number): boolean {
+    if (!this.currentPlayer.isHuman) return false
+    if (uid < 0 || uid >= this.unitCount) return false
+    if (this.unitBytes[uid * UNIT_STRIDE + UNIT_CIV_OFF] !== this.currentPlayer.id) return false
+    this._setActiveUnit(uid, false)
+    return true
+  }
+
+  /** Cycle focus to the next (+1) or previous (-1) pending unit without auto-executing its path. */
+  cyclePendingUnit(dir: 1 | -1): void {
+    if (!this.currentPlayer.isHuman) return
+    const pending = [...this._pendingIds].sort((a, b) => a - b)
+    if (pending.length === 0) return
+    const cur = this._activeUnitId
+    const idx = pending.indexOf(cur)
+    const next = dir === 1
+      ? (idx < 0 ? pending[0]                                 : pending[(idx + 1) % pending.length])
+      : (idx < 0 ? pending[pending.length - 1]                : pending[(idx - 1 + pending.length) % pending.length])
+    this._setActiveUnit(next, false)
+  }
+
+  /** Returns the stored movement waypoints for a unit (empty if none). */
+  getUnitPath(uid: number): ReadonlyArray<{ x: number; y: number }> {
+    return this._unitPaths.get(uid) ?? []
+  }
+
+  /**
    * Compute the path the active unit would take to reach (toX, toY) — pure
    * read, no state changes.  Used to render the right-button hover preview.
    * Returns the waypoint list (not including start) or null if unreachable.
@@ -179,13 +213,21 @@ export class Game {
     return this._findPath(ux, uy, toX, toY, uid)
   }
 
-  /** Skip the active unit without moving (also cancels any stored path). */
+  /**
+   * Skip the active unit.
+   *
+   * • Pending unit (still has moves): cancels stored path, marks done, advances.
+   * • Spent unit selected via focusUnit: just deselects and advances — stored
+   *   path is preserved so it auto-executes next turn as usual.
+   */
   skipActiveUnit(): void {
     if (this._activeUnitId < 0 || !this.currentPlayer.isHuman) return
     const uid = this._activeUnitId
-    this._unitPaths.delete(uid)
-    this.unitBytes[uid * UNIT_STRIDE + UNIT_MOVES_OFF] = 0
-    this._pendingIds.delete(uid)
+    if (this._pendingIds.has(uid)) {
+      this._unitPaths.delete(uid)
+      this.unitBytes[uid * UNIT_STRIDE + UNIT_MOVES_OFF] = 0
+      this._pendingIds.delete(uid)
+    }
     this._advanceActiveUnit()
   }
 
@@ -288,11 +330,11 @@ export class Game {
    * The recursion terminates once all path-units have moved and the first
    * unit without queued orders becomes active (or all units are done).
    */
-  private _setActiveUnit(uid: number): void {
+  private _setActiveUnit(uid: number, autoExecutePath = true): void {
     this._activeUnitId = uid
 
     // Auto-execute stored path if one exists for this unit
-    if (uid >= 0 && this.currentPlayer.isHuman) {
+    if (autoExecutePath && uid >= 0 && this.currentPlayer.isHuman) {
       const path = this._unitPaths.get(uid)
       if (path && path.length > 0 &&
           this.unitBytes[uid * UNIT_STRIDE + UNIT_MOVES_OFF] > 0) {
@@ -346,6 +388,7 @@ export class Game {
   private _computeValidMoves(uid: number): Set<number> {
     const result = new Set<number>()
     if (uid < 0) return result
+    if (this.unitBytes[uid * UNIT_STRIDE + UNIT_MOVES_OFF] === 0) return result  // spent — no green overlays
 
     const off = uid * UNIT_STRIDE
     const ux  = this.unitView.getUint16(off + UNIT_X_OFF, true)

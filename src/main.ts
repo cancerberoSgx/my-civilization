@@ -177,7 +177,7 @@ gs().setStartGameFn((config: GameConfig) => {
       },
 
       onPathChanged(path) {
-        tileRenderer.setPath(path)
+        tileRenderer.setPathPreview(path)  // stored route shown in pink (same as live preview)
       },
 
       onAllUnitsDone() {
@@ -213,9 +213,14 @@ gs().setStartGameFn((config: GameConfig) => {
       if (e.button === 2) {
         // Right-button release: commit the previewed path
         rightDown = false; previewTx = -1; previewTy = -1
+        const prevActiveUid = game.activeUnitId
         tileRenderer.setPathPreview([])
         if (tx >= 0 && tx < config.mapWidth && ty >= 0 && ty < config.mapHeight) {
           game.requestMoveTo(tx, ty)
+        }
+        // If the unit is still active (move failed or target unreachable), restore its stored path
+        if (game.activeUnitId === prevActiveUid && game.activeUnitId >= 0) {
+          tileRenderer.setPathPreview([...game.getUnitPath(game.activeUnitId)])
         }
         return
       }
@@ -227,6 +232,7 @@ gs().setStartGameFn((config: GameConfig) => {
       const uid = unitRenderer.unitAt(tx, ty)
       unitRenderer.selectUnit(uid)
       gs().setSelectedUnit(uid >= 0 ? unitRenderer.getUnitInfo(uid) : null)
+      if (uid >= 0) game.focusUnit(uid)
 
       tileRenderer.setSelected(tx, ty)
 
@@ -277,6 +283,14 @@ gs().setStartGameFn((config: GameConfig) => {
         ev.preventDefault()
         game.skipActiveUnit()
       }
+      if (ev.key === 'ArrowLeft') {
+        ev.preventDefault()
+        game.cyclePendingUnit(-1)
+      }
+      if (ev.key === 'ArrowRight') {
+        ev.preventDefault()
+        game.cyclePendingUnit(1)
+      }
       if (ev.key === 'Enter') {
         if (gs().canEndTurn) game.endTurn()
       }
@@ -289,8 +303,8 @@ gs().setStartGameFn((config: GameConfig) => {
 
       const spd = 10 / viewport.scale.x
       let dx = 0, dy = 0
-      if (keys.has('ArrowLeft')  || keys.has('a') || keys.has('A')) dx -= spd
-      if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) dx += spd
+      if (keys.has('a') || keys.has('A')) dx -= spd
+      if (keys.has('d') || keys.has('D')) dx += spd
       if (keys.has('ArrowUp')    || keys.has('w') || keys.has('W')) dy -= spd
       if (keys.has('ArrowDown')  || keys.has('s') || keys.has('S')) dy += spd
       if (keys.has('+') || keys.has('=')) viewport.zoom( 0.04 * viewport.scale.x)

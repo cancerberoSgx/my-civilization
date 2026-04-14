@@ -281,7 +281,17 @@ p2
 when unit is selected for movement, and I right click a tile to move it, while I'm pressing the button the path should be rendered in PINK color
 
 p3
-when I left-click a unit in the map, it gets selected for movement
+when I left-click a unit in the map, it gets selected for movement. Even if it already has a route assigned, as a user I can right click another route and override it
+
+p4
+as a user: 
+ * I can select a unit for movement, even if it has no more movements in this turn
+ * when unit is selected for movement I can see its current route (in pink)
+ * when unit is selected for movement, entering "space" key will action "skip unit"
+ * I can switch unit movement selection clicking left and right arrow keys
+ * I can end turn pressing enter (only if end-turn action is available)
+
+as a user I can override unit movement path. If I select the unit I can right click another tile and redefine the current path
 
 
 images
