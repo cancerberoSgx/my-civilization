@@ -225,6 +225,8 @@ function GameHUD(): React.ReactElement {
   const toggleMinimap   = useGameStore(s => s.toggleMinimap)
   const builderMode     = useGameStore(s => s.builderMode)
   const toggleBuilder   = useGameStore(s => s.toggleBuilderMode)
+  const gridVisible     = useGameStore(s => s.gridVisible)
+  const toggleGrid      = useGameStore(s => s.toggleGrid)
 
   const playerColorCss = currentPlayer
     ? `#${currentPlayer.color.toString(16).padStart(6, '0')}`
@@ -275,6 +277,14 @@ function GameHUD(): React.ReactElement {
             </button>
           </>
         )}
+
+        <button
+          style={{ ...btnStyle, ...(gridVisible ? btnGridActive : {}) }}
+          onClick={toggleGrid}
+          title="Toggle tile grid"
+        >
+          Grid
+        </button>
 
         <button
           style={{ ...btnStyle, ...(minimapVisible ? btnMinimapActive : {}) }}
@@ -552,6 +562,12 @@ const btnEndTurnActive: React.CSSProperties = {
   border:     '1px solid rgba(34,200,80,0.7)',
   color:      '#44ee88',
   fontWeight: 700,
+}
+
+const btnGridActive: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.15)',
+  border:     '1px solid rgba(255,255,255,0.5)',
+  color:      '#ffffff',
 }
 
 const btnMinimapActive: React.CSSProperties = {

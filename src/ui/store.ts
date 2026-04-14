@@ -65,6 +65,12 @@ interface GameStore {
   builderImprovementType: ImprovementType
   builderApply:           ((tx: number, ty: number) => void) | null
 
+  // ── Grid ──────────────────────────────────────────────────────────────────────
+  gridVisible: boolean
+  setGridFn:   ((v: boolean) => void) | null
+  registerGridFn(fn: (v: boolean) => void): void
+  toggleGrid(): void
+
   // ── Minimap ───────────────────────────────────────────────────────────────────
   minimapVisible:  boolean
   tileBuffer:      SharedArrayBuffer | null
@@ -143,6 +149,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   builderImprovementType: ImprovementType.None,
   builderApply:           null,
 
+  gridVisible: false,
+  setGridFn:   null,
+
   minimapVisible: true,
   tileBuffer:     null,
   viewportBounds: null,
@@ -168,6 +177,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPendingCount: (n)  => set({ pendingCount: n }),
   setCanEndTurn:   (v)  => set({ canEndTurn: v }),
   setGameActions: (endTurn, skipUnit, skipAll) => set({ endTurn, skipUnit, skipAll }),
+
+  registerGridFn: (fn) => set({ setGridFn: fn }),
+  toggleGrid: () => set(s => {
+    const next = !s.gridVisible
+    s.setGridFn?.(next)
+    return { gridVisible: next }
+  }),
 
   toggleMinimap:    ()            => set(s => ({ minimapVisible: !s.minimapVisible })),
   setMinimapReady:  (buf, moveTo) => set({ tileBuffer: buf, minimapMoveTo: moveTo }),

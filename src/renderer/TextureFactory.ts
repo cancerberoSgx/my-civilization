@@ -37,17 +37,24 @@ export class TextureFactory {
   readonly pathPreview:     Texture   // pink tint for right-button hover preview (intermediate)
   readonly pathPreviewDest: Texture   // bright pink for right-button hover destination
   readonly river     = new Map<number, Texture>()  // key = RIVER bitmask (1-15)
+  readonly gridTile: Texture
 
   constructor(renderer: Renderer) {
-    // ── Terrain (solid colour + subtle edge shading) ───────────────────────
+    // ── Terrain (solid colour) ─────────────────────────────────────────────
     for (const def of TERRAIN_MAP.values()) {
       const g = new Graphics()
       g.rect(0, 0, TS, TS).fill(def.color)
-      // g.rect(0, 0, TS, 1).fill({ color: 0xffffff, alpha: 0.15 })
-      // g.rect(0, 0, 1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
-      // g.rect(0, TS-1, TS, 1).fill({ color: 0x000000, alpha: 0.20 })
-      // g.rect(TS-1, 0, 1, TS).fill({ color: 0x000000, alpha: 0.12 })
       this.terrain.set(def.id, capture(renderer, g))
+    }
+
+    // ── Grid overlay (transparent background, bevel edges) ────────────────
+    {
+      const g = new Graphics()
+      g.rect(0,      0,      TS, 1 ).fill({ color: 0xffffff, alpha: 0.15 })
+      g.rect(0,      0,      1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
+      g.rect(0,      TS - 1, TS, 1 ).fill({ color: 0x000000, alpha: 0.20 })
+      g.rect(TS - 1, 0,      1,  TS).fill({ color: 0x000000, alpha: 0.12 })
+      this.gridTile = capture(renderer, g)
     }
 
     // ── Feature overlays (transparent background) ─────────────────────────

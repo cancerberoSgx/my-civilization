@@ -183,20 +183,6 @@ in units.ts each unit define a movement. If a unit.movement is 2 then it can per
 
 on each turn, when any unit moves (both human and ai player), there should be an animation from tile 1 to tile 2 that translate unit sprite in 0.5 seconds so users realizes what happened
 
-# see grid
-
-this commented lines in src/renderer/TextureFactory.ts draw the tiles grid (borders between tiles):
-
-      // g.rect(0, 0, TS, 1).fill({ color: 0xffffff, alpha: 0.15 })
-      // g.rect(0, 0, 1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
-      // g.rect(0, TS-1, TS, 1).fill({ color: 0x000000, alpha: 0.20 })
-      // g.rect(TS-1, 0, 1, TS).fill({ color: 0x000000, alpha: 0.12 })
-
-allow the user to toggle grid lines on/off from the menu
-
-
-# FUTURE
-
 
 # unit actions
 
@@ -217,4 +203,28 @@ For now define the unit actions model and these particular actions:
     * the settler unit is deleted
     * in the same place a new "city" unit is created
 
+
+# see grid
+
+this commented lines in src/renderer/TextureFactory.ts draw the tiles grid (borders between tiles):
+
+      // g.rect(0, 0, TS, 1).fill({ color: 0xffffff, alpha: 0.15 })
+      // g.rect(0, 0, 1,  TS).fill({ color: 0xffffff, alpha: 0.10 })
+      // g.rect(0, TS-1, TS, 1).fill({ color: 0x000000, alpha: 0.20 })
+      // g.rect(TS-1, 0, 1, TS).fill({ color: 0x000000, alpha: 0.12 })
+
+allow the user to toggle grid lines on/off from the menu
+
+
+# city management
+
+context: 
+a city (city unit) represents a city which contains population (number of city people) which are assigned to an adjacent city tile (the two tiles adjacent to all directions as image shows)
+Cities contains buildings which improves city production somehow, see notes/civ-reference/buildings.json for buildings example
+workers working on tiles will generate food
+when a city unit is clicked, instead selecting for movement, it will display city's management modal. 
+t
+
+
+# FUTURE
 

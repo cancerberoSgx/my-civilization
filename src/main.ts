@@ -127,6 +127,7 @@ async function buildGameScene(
   const unitRenderer = new UnitRenderer(utf, viewport, config.mapWidth, config.mapHeight)
 
   viewport.addChild(tileRenderer.terrainLayer)
+  viewport.addChild(tileRenderer.gridLayer)
   viewport.addChild(tileRenderer.riverLayer)
   viewport.addChild(tileRenderer.featureLayer)
   viewport.addChild(tileRenderer.resourceLayer)
@@ -138,6 +139,8 @@ async function buildGameScene(
 
   unitRenderer.setBuffers(unitBuffer, unitCount)
   tileRenderer.initialUpdate(viewport)
+  gs().registerGridFn(v => tileRenderer.setGridVisible(v))
+  tileRenderer.setGridVisible(gs().gridVisible)   // apply current preference
 
   // ── Tile info lookup helpers ────────────────────────────────────────────────
   const tileBytes = new Uint8Array(tileBuffer)

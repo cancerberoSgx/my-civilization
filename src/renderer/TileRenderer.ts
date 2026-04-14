@@ -31,6 +31,7 @@ interface TileRecord {
   feature:  Sprite
   resource: Sprite
   improve:  Sprite
+  grid:     Sprite
 }
 
 // Spare tile buffer (all layers stacked)
@@ -39,6 +40,7 @@ const PAD = 3  // extra tiles around the visible area
 export class TileRenderer {
   // layer containers added to viewport
   readonly terrainLayer   = new Container()
+  readonly gridLayer      = new Container()   // grid lines — sits just above terrain
   readonly featureLayer   = new Container()
   readonly resourceLayer  = new Container()
   readonly improveLayer   = new Container()
@@ -48,7 +50,7 @@ export class TileRenderer {
   readonly moveLayer      = new Container()
   /** Queued movement path — sits between moveLayer and unit layer */
   readonly pathLayer      = new Container()
-  /** River edge overlays — sits between terrain and feature layers */
+  /** River edge overlays — sits between terrain/grid and feature layers */
   readonly riverLayer     = new Container()
 
   // key = tileIndex (y * mapWidth + x)
@@ -56,6 +58,7 @@ export class TileRenderer {
 
   // Sprite pools (one pool per layer; all sprites start off-stage)
   private terrainPool:  Sprite[] = []
+  private gridPool:     Sprite[] = []
   private featurePool:  Sprite[] = []
   private resourcePool: Sprite[] = []
   private improvePool:  Sprite[] = []
@@ -136,6 +139,11 @@ export class TileRenderer {
   /** Call once after adding layers to the viewport. */
   initialUpdate(viewport: CameraViewport): void {
     this.update(viewport)
+  }
+
+  /** Show or hide grid lines between tiles. */
+  setGridVisible(v: boolean): void {
+    this.gridLayer.visible = v
   }
 
   /** Set hovered tile (call from pointer-move handler). */
@@ -380,16 +388,19 @@ export class TileRenderer {
     const wy = ty * TILE_SIZE
 
     const terrain  = this.getPooled(this.terrainPool,  this.terrainLayer,  this.tf.terrain.get(terrainId)!)
+    const grid     = this.getPooled(this.gridPool,     this.gridLayer,     this.tf.gridTile)
     const feature  = this.getPooled(this.featurePool,  this.featureLayer,  this.tf.feature.get(featureId) ?? this.tf.feature.get(FeatureType.None)!)
     const resource = this.getPooled(this.resourcePool, this.resourceLayer, this.tf.resource.get(resourceId) ?? this.tf.resource.get(ResourceType.None)!)
     const improve  = this.getPooled(this.improvePool,  this.improveLayer,  this.tf.improvement.get(improveId) ?? this.tf.improvement.get(ImprovementType.None)!)
 
     terrain.position.set(wx, wy)
+    grid.position.set(wx, wy)
     feature.position.set(wx, wy)
     resource.position.set(wx, wy)
     improve.position.set(wx, wy)
 
     terrain.visible  = true
+    grid.visible     = true
     feature.visible  = featureId !== FeatureType.None
     resource.visible = resourceId !== ResourceType.None
     improve.visible  = improveId !== ImprovementType.None
@@ -403,7 +414,7 @@ export class TileRenderer {
       }
     }
 
-    return { terrain, feature, resource, improve }
+    return { terrain, grid, feature, resource, improve }
   }
 
   private getPooledRiver(texture: Texture, wx: number, wy: number): Sprite {
@@ -424,10 +435,12 @@ export class TileRenderer {
 
   private release(rec: TileRecord): void {
     rec.terrain.visible  = false
+    rec.grid.visible     = false
     rec.feature.visible  = false
     rec.resource.visible = false
     rec.improve.visible  = false
     this.terrainPool.push(rec.terrain)
+    this.gridPool.push(rec.grid)
     this.featurePool.push(rec.feature)
     this.resourcePool.push(rec.resource)
     this.improvePool.push(rec.improve)
