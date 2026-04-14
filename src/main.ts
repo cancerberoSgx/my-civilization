@@ -201,6 +201,18 @@ gs().setStartGameFn((config: GameConfig) => {
       () => game.skipAllPending(),
     )
 
+    // ── Minimap ────────────────────────────────────────────────────────────────
+    gs().setMinimapReady(tileBuffer, (wx, wy) => viewport.moveCenter(wx, wy))
+    const syncViewport = () => gs().setViewportBounds({
+      left:   viewport.left,
+      top:    viewport.top,
+      right:  viewport.right,
+      bottom: viewport.bottom,
+    })
+    viewport.on('moved',  syncViewport)
+    viewport.on('zoomed', syncViewport)
+    syncViewport()
+
     // ── Canvas input events ────────────────────────────────────────────────
     const canvas = app.canvas as HTMLCanvasElement
 
@@ -288,6 +300,7 @@ gs().setStartGameFn((config: GameConfig) => {
         gs().setSelectedTile(null); gs().setSelectedUnit(null)
         tileRenderer.setSelected(-1, -1); unitRenderer.selectUnit(-1)
       }
+      if (ev.key === 'm' || ev.key === 'M') gs().toggleMinimap()
       if (ev.key === ' ') {
         ev.preventDefault()
         game.skipActiveUnit()

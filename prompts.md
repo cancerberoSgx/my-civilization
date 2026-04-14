@@ -164,6 +164,5 @@ from the menu I can trigger the world builder which allows me:
 
 # minimap
 
-As a user I can see a minimap displaying the entire map in a component. clicking the minimap will take me to that location in the main map
-I can toggle minimap on-off from the top menu
+As a user I can see a minimap displaying the entire map in a component 1/4 the size of the screen. clicking inside the minimap will take me to that location in the main map. I can toggle minimap on-off from the top menu
 

@@ -2,6 +2,13 @@ import { create } from 'zustand'
 import type { TileInfo, SelectedUnit, GameConfig } from '../shared/types'
 import type { Player } from '../game/Game'
 
+export interface ViewportBounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
 interface GameStore {
   // ── New-game config (null = show menu) ──────────────────────────────────────
   gameConfig:    GameConfig | null
@@ -34,6 +41,12 @@ interface GameStore {
   /** Set by main.ts; called when the user clicks New Game */
   startGameFn:   ((config: GameConfig) => void) | null
 
+  // ── Minimap ───────────────────────────────────────────────────────────────────
+  minimapVisible:  boolean
+  tileBuffer:      SharedArrayBuffer | null
+  viewportBounds:  ViewportBounds | null
+  minimapMoveTo:   ((worldX: number, worldY: number) => void) | null
+
   // ── Actions ──────────────────────────────────────────────────────────────────
   /** Called from the New Game menu — stores config and triggers init */
   startGame(config: GameConfig): void
@@ -46,6 +59,9 @@ interface GameStore {
   setPendingCount(n: number): void
   setCanEndTurn(v: boolean): void
   setGameActions(endTurn: () => void, skipUnit: () => void, skipAll: () => void): void
+  toggleMinimap(): void
+  setMinimapReady(buf: SharedArrayBuffer, moveTo: (worldX: number, worldY: number) => void): void
+  setViewportBounds(b: ViewportBounds): void
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -71,6 +87,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   skipAll:     null,
   startGameFn: null,
 
+  minimapVisible: true,
+  tileBuffer:     null,
+  viewportBounds: null,
+  minimapMoveTo:  null,
+
   startGame: (config) => {
     set({ gameConfig: config, civColors: config.civColors })
     get().startGameFn?.(config)
@@ -91,4 +112,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPendingCount: (n)  => set({ pendingCount: n }),
   setCanEndTurn:   (v)  => set({ canEndTurn: v }),
   setGameActions: (endTurn, skipUnit, skipAll) => set({ endTurn, skipUnit, skipAll }),
+
+  toggleMinimap:    ()            => set(s => ({ minimapVisible: !s.minimapVisible })),
+  setMinimapReady:  (buf, moveTo) => set({ tileBuffer: buf, minimapMoveTo: moveTo }),
+  setViewportBounds: (b)          => set({ viewportBounds: b }),
 }))

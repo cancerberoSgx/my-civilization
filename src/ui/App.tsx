@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
+import { Minimap } from './Minimap'
 import { CIV_PALETTE } from '../shared/constants'
 import { MapLayout } from '../shared/types'
 import type { GameConfig } from '../shared/types'
@@ -135,15 +136,17 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
 // ── In-game HUD ───────────────────────────────────────────────────────────────
 
 function GameHUD(): React.ReactElement {
-  const turn          = useGameStore(s => s.turn)
-  const unitCount     = useGameStore(s => s.unitCount)
-  const currentPlayer = useGameStore(s => s.currentPlayer)
-  const pendingCount  = useGameStore(s => s.pendingCount)
-  const canEndTurn    = useGameStore(s => s.canEndTurn)
-  const phaseLabel    = useGameStore(s => s.phaseLabel)
-  const endTurn       = useGameStore(s => s.endTurn)
-  const skipUnit      = useGameStore(s => s.skipUnit)
-  const skipAll       = useGameStore(s => s.skipAll)
+  const turn           = useGameStore(s => s.turn)
+  const unitCount      = useGameStore(s => s.unitCount)
+  const currentPlayer  = useGameStore(s => s.currentPlayer)
+  const pendingCount   = useGameStore(s => s.pendingCount)
+  const canEndTurn     = useGameStore(s => s.canEndTurn)
+  const phaseLabel     = useGameStore(s => s.phaseLabel)
+  const endTurn        = useGameStore(s => s.endTurn)
+  const skipUnit       = useGameStore(s => s.skipUnit)
+  const skipAll        = useGameStore(s => s.skipAll)
+  const minimapVisible = useGameStore(s => s.minimapVisible)
+  const toggleMinimap  = useGameStore(s => s.toggleMinimap)
 
   const playerColorCss = currentPlayer
     ? `#${currentPlayer.color.toString(16).padStart(6, '0')}`
@@ -195,6 +198,14 @@ function GameHUD(): React.ReactElement {
           </>
         )}
 
+        <button
+          style={{ ...btnStyle, ...(minimapVisible ? btnMinimapActive : {}) }}
+          onClick={toggleMinimap}
+          title="Toggle minimap (M)"
+        >
+          Map
+        </button>
+
         <span style={{ ...hudItem, opacity: 0.45, fontSize: 11 }}>
           Drag · scroll · click · right-click to move
         </span>
@@ -202,6 +213,9 @@ function GameHUD(): React.ReactElement {
 
       {/* Tile / unit info panel */}
       <InfoPanel />
+
+      {/* Minimap */}
+      <Minimap />
 
       {/* Keyboard hints */}
       <div style={hintsStyle}>
@@ -394,6 +408,12 @@ const btnEndTurnActive: React.CSSProperties = {
   border:     '1px solid rgba(34,200,80,0.7)',
   color:      '#44ee88',
   fontWeight: 700,
+}
+
+const btnMinimapActive: React.CSSProperties = {
+  background: 'rgba(34,102,204,0.3)',
+  border:     '1px solid rgba(68,170,255,0.6)',
+  color:      '#88ccff',
 }
 
 const btnEndTurnDisabled: React.CSSProperties = {
