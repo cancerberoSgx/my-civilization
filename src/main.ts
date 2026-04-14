@@ -12,7 +12,7 @@ import { Application } from 'pixi.js'
 
 import {
   TILE_SIZE,
-  TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT,
+  TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT, TILE_RIVER,
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF,
   MAX_UNITS, MIN_ZOOM, MAX_ZOOM,
 } from './shared/constants'
@@ -117,6 +117,7 @@ gs().setStartGameFn((config: GameConfig) => {
     const unitRenderer = new UnitRenderer(utf, viewport, config.mapWidth, config.mapHeight)
 
     viewport.addChild(tileRenderer.terrainLayer)
+    viewport.addChild(tileRenderer.riverLayer)      // river edges above terrain, below features
     viewport.addChild(tileRenderer.featureLayer)
     viewport.addChild(tileRenderer.resourceLayer)
     viewport.addChild(tileRenderer.improveLayer)
@@ -215,16 +216,17 @@ gs().setStartGameFn((config: GameConfig) => {
       const terrainId = tileBytes[base + TILE_TERRAIN] as TerrainType
       const td        = TERRAIN_MAP.get(terrainId)!
       gs().setSelectedTile({
-        x:           tx,
-        y:           ty,
-        terrain:     td.name,
-        feature:     featureName[tileBytes[base + TILE_FEATURE]]  ?? 'None',
-        resource:    RESOURCE_MAP.get(tileBytes[base + TILE_RESOURCE]   as ResourceType)?.name    ?? 'None',
-        improvement: IMPROVEMENT_MAP.get(tileBytes[base + TILE_IMPROVEMENT] as ImprovementType)?.name ?? 'None',
-        food:        td.food,
-        production:  td.production,
-        commerce:    td.commerce,
-        defense:     td.defense,
+        x:             tx,
+        y:             ty,
+        terrain:       td.name,
+        feature:       featureName[tileBytes[base + TILE_FEATURE]]  ?? 'None',
+        resource:      RESOURCE_MAP.get(tileBytes[base + TILE_RESOURCE]   as ResourceType)?.name    ?? 'None',
+        improvement:   IMPROVEMENT_MAP.get(tileBytes[base + TILE_IMPROVEMENT] as ImprovementType)?.name ?? 'None',
+        food:          td.food,
+        production:    td.production,
+        commerce:      td.commerce,
+        defense:       td.defense,
+        hasFreshWater: tileBytes[base + TILE_RIVER] !== 0,
       })
     })
 

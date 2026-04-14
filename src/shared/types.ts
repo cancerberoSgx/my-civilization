@@ -94,16 +94,17 @@ export interface ImprovementDef {
 // ── UI / interaction ─────────────────────────────────────────────────────────
 
 export interface TileInfo {
-  x:           number
-  y:           number
-  terrain:     string
-  feature:     string
-  resource:    string
-  improvement: string
-  food:        number
-  production:  number
-  commerce:    number
-  defense:     number
+  x:            number
+  y:            number
+  terrain:      string
+  feature:      string
+  resource:     string
+  improvement:  string
+  food:         number
+  production:   number
+  commerce:     number
+  defense:      number
+  hasFreshWater: boolean
 }
 
 export interface SelectedUnit {

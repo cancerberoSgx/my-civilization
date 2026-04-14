@@ -27,7 +27,8 @@ export function InfoPanel(): React.ReactElement | null {
           <Row label="Food"       value={tile.food}       />
           <Row label="Production" value={tile.production} />
           <Row label="Commerce"   value={tile.commerce}   />
-          {tile.defense > 0 && <Row label="Defense" value={`+${tile.defense}%`} />}
+          {tile.defense > 0       && <Row label="Defense"     value={`+${tile.defense}%`} />}
+          {tile.hasFreshWater     && <Row label="Fresh Water"  value="Yes" />}
         </section>
       )}
 

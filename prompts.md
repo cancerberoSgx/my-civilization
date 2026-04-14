@@ -247,3 +247,13 @@ Before loading the map, there's a menu which have an option "new game" where use
 
 when game start, each player has only these units: 1 settler, 1 worker 1 scout and 1 warrior 
 
+# rivers
+
+terrain tiles must support rivers. Rivers are drawn between two tiles and those two tiles will contain the "resource" "fresh water". Rivers are continuous curves flow from mountains or hills to ocean or lakes
+rivers are drawn on the border of two adjacent tiles and affect both (fresh water)
+
+p2: 
+in rivers drawing algorithm: 
+ * make sure the river line is continous, currently if the river direction is vertical, the river tile line is horizontal
+ * make sure rivers always ends in ocean, or lake (water tile)
+ * all the map must have rivers tiles uniformly more or less...

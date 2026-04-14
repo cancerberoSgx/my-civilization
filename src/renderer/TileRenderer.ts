@@ -18,7 +18,7 @@ import { Container, Sprite, type Texture } from 'pixi.js'
 import type { CameraViewport } from './CameraViewport'
 import {
   TILE_SIZE,
-  TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT,
+  TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT, TILE_RIVER,
 } from '../shared/constants'
 import { TerrainType, FeatureType, ResourceType, ImprovementType } from '../shared/types'
 import type { TextureFactory } from './TextureFactory'
@@ -46,6 +46,8 @@ export class TileRenderer {
   readonly highlightLayer = new Container()
   /** Valid-move green overlays — sits between improve and unit layers */
   readonly moveLayer      = new Container()
+  /** River edge overlays — sits between terrain and feature layers */
+  readonly riverLayer     = new Container()
 
   // key = tileIndex (y * mapWidth + x)
   private active = new Map<number, TileRecord>()
@@ -67,6 +69,10 @@ export class TileRenderer {
   private activeMoveSprites: Sprite[] = []
   // Active-unit tile highlight (single sprite)
   private activeUnitSprite:  Sprite
+
+  // River sprites — one composite sprite per tile (pooled)
+  private riverPool:    Sprite[] = []
+  private activeRivers = new Map<number, Sprite>()
 
   // Tile data view
   private tiles: Uint8Array
@@ -199,6 +205,8 @@ export class TileRenderer {
       const ty = Math.floor(idx / this.mapWidth)
       if (!this.inRange(tx, ty, newRange)) {
         this.release(rec)
+        const rs = this.activeRivers.get(idx)
+        if (rs) { rs.visible = false; this.riverPool.push(rs); this.activeRivers.delete(idx) }
         this.active.delete(idx)
       }
     }
@@ -258,7 +266,32 @@ export class TileRenderer {
     resource.visible = resourceId !== ResourceType.None
     improve.visible  = improveId !== ImprovementType.None
 
+    // River sprite — one composite per tile (bitmask → texture lookup)
+    const riverBits = this.tiles[base + TILE_RIVER]
+    if (riverBits) {
+      const tex = this.tf.river.get(riverBits)
+      if (tex) {
+        this.activeRivers.set(ty * this.mapWidth + tx, this.getPooledRiver(tex, wx, wy))
+      }
+    }
+
     return { terrain, feature, resource, improve }
+  }
+
+  private getPooledRiver(texture: Texture, wx: number, wy: number): Sprite {
+    let s: Sprite
+    if (this.riverPool.length > 0) {
+      s = this.riverPool.pop()!
+      s.texture = texture
+    } else {
+      s = new Sprite(texture)
+      s.width  = TILE_SIZE
+      s.height = TILE_SIZE
+      this.riverLayer.addChild(s)
+    }
+    s.position.set(wx, wy)
+    s.visible = true
+    return s
   }
 
   private release(rec: TileRecord): void {

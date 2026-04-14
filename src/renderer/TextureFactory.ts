@@ -32,6 +32,7 @@ export class TextureFactory {
   readonly select:     Texture
   readonly validMove:  Texture   // green overlay for reachable tiles
   readonly activeUnit: Texture   // pulsing border for focused unit tile
+  readonly river     = new Map<number, Texture>()  // key = RIVER bitmask (1-15)
 
   constructor(renderer: Renderer) {
     // ── Terrain (solid colour + subtle edge shading) ───────────────────────
@@ -173,6 +174,41 @@ export class TextureFactory {
       const g = new Graphics()
       g.rect(1, 1, TS - 2, TS - 2).stroke({ color: 0x00eeff, width: 3 })
       this.activeUnit = capture(renderer, g)
+    }
+
+    // ── River flow textures (one per bitmask 1-15) ───────────────────────
+    // Each texture draws centre-to-edge lines for every active river edge,
+    // giving continuous visual flow across adjacent tiles.
+    // Bit layout: RIVER_N=1, RIVER_E=2, RIVER_S=4, RIVER_W=8
+    {
+      const RC  = 0x3a85c7  // river blue
+      const RLT = 0x6ab0e6  // lighter highlight
+      const RW  = 5         // stroke width (pixels)
+      const TS2 = TS / 2    // tile centre
+
+      for (let mask = 1; mask <= 15; mask++) {
+        const g   = new Graphics()
+        const pts: [number, number][] = []
+        if (mask & 1) pts.push([TS2,  0  ])  // N edge midpoint
+        if (mask & 2) pts.push([TS,   TS2])  // E edge midpoint
+        if (mask & 4) pts.push([TS2,  TS ])  // S edge midpoint
+        if (mask & 8) pts.push([0,    TS2])  // W edge midpoint
+
+        // Dark base: line from tile centre to each active edge
+        for (const [ex, ey] of pts) {
+          g.moveTo(TS2, TS2).lineTo(ex, ey)
+           .stroke({ color: RC, width: RW, alpha: 0.90 })
+        }
+        // Lighter highlight on top
+        for (const [ex, ey] of pts) {
+          g.moveTo(TS2, TS2).lineTo(ex, ey)
+           .stroke({ color: RLT, width: 2, alpha: 0.45 })
+        }
+        // Centre dot to cover junction gaps
+        g.circle(TS2, TS2, RW / 2 + 0.5).fill({ color: RC, alpha: 0.90 })
+
+        this.river.set(mask, capture(renderer, g))
+      }
     }
   }
 

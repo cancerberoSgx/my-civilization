@@ -4,7 +4,8 @@
  */
 import {
   TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE,
-  TILE_IMPROVEMENT, TILE_OWNER, TILE_VISIBILITY,
+  TILE_IMPROVEMENT, TILE_OWNER, TILE_VISIBILITY, TILE_RIVER,
+  RIVER_N, RIVER_E, RIVER_S, RIVER_W,
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF,
   UNIT_CIV_OFF, UNIT_HP_OFF, UNIT_MOVES_OFF,
   MAX_UNITS,
@@ -56,6 +57,14 @@ function fbm(x: number, y: number, octaves: number, seed: number): number {
   return val / max
 }
 
+// ── River flow directions: [dx, dy, bit on current tile, bit on neighbour] ───
+const DIRS4: [number, number, number, number][] = [
+  [ 0, -1, RIVER_N, RIVER_S],
+  [ 1,  0, RIVER_E, RIVER_W],
+  [ 0,  1, RIVER_S, RIVER_N],
+  [-1,  0, RIVER_W, RIVER_E],
+]
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 self.onmessage = (e: MessageEvent<MapgenRequest>) => {
   const { tileBuffer, unitBuffer, unitCountBuffer, mapWidth, mapHeight, numCivs, seed } = e.data
@@ -68,6 +77,9 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
   const rng = new RNG(seed)
 
   // ── 1. Generate terrain ─────────────────────────────────────────────────────
+  // Also store the raw elevation for later river-tracing.
+  const elevMap = new Float32Array(mapWidth * mapHeight)
+
   for (let ty = 0; ty < mapHeight; ty++) {
     const ny = ty / mapHeight
     for (let tx = 0; tx < mapWidth; tx++) {
@@ -77,6 +89,8 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
       const moist   = fbm(nx * 3.0 + 100, ny * 3.0 + 100, 4, seed + 999)
       const featureN = fbm(nx * 8.0, ny * 8.0, 3, seed + 12345)
       const lat     = Math.abs(ny - 0.5) * 2  // 0=equator → 1=poles
+
+      elevMap[ty * mapWidth + tx] = elev
 
       let terrain: TerrainType
       let feature     = FeatureType.None
@@ -172,14 +186,84 @@ self.onmessage = (e: MessageEvent<MapgenRequest>) => {
       tiles[idx + TILE_IMPROVEMENT] = improvement
       tiles[idx + TILE_OWNER]       = 0
       tiles[idx + TILE_VISIBILITY]  = 2  // fully visible for demo
+      tiles[idx + TILE_RIVER]       = 0  // filled in river pass below
     }
 
     if (ty % 50 === 0) {
-      self.postMessage({ type: 'progress', pct: Math.round((ty / mapHeight) * 80) })
+      self.postMessage({ type: 'progress', pct: Math.round((ty / mapHeight) * 70) })
     }
   }
 
-  // ── 2. Place starting units ─────────────────────────────────────────────────
+  // ── 2. Generate rivers ───────────────────────────────────────────────────────
+  // Divide the map into sectors and start one river per sector that contains
+  // a mountain or hill, ensuring uniform coverage across the whole map.
+  // Each river traces the steepest downhill path; when all unvisited neighbours
+  // are exhausted (inland basin), it falls back to the lowest overall neighbour
+  // so it can escape and always reach ocean/coast.
+
+  const SECTOR        = 50                    // tiles per sector side
+  const MAX_RIVER_LEN = mapWidth + mapHeight  // enough to cross the entire map
+  const sectorsX      = Math.ceil(mapWidth  / SECTOR)
+  const sectorsY      = Math.ceil(mapHeight / SECTOR)
+
+  for (let sry = 0; sry < sectorsY; sry++) {
+    for (let srx = 0; srx < sectorsX; srx++) {
+      const x0 = srx * SECTOR,                      y0 = sry * SECTOR
+      const x1 = Math.min(x0 + SECTOR, mapWidth),   y1 = Math.min(y0 + SECTOR, mapHeight)
+
+      // Find a mountain or hill source inside this sector
+      let sx = -1, sy = -1
+      for (let a = 0; a < 500 && sx < 0; a++) {
+        const tx = x0 + rng.int(x1 - x0)
+        const ty = y0 + rng.int(y1 - y0)
+        const t  = tiles[(ty * mapWidth + tx) * TILE_STRIDE + TILE_TERRAIN] as TerrainType
+        if (t === TerrainType.Mountain || t === TerrainType.Hill) { sx = tx; sy = ty }
+      }
+      if (sx < 0) continue  // no elevated source in this sector
+
+      const visited = new Set<number>()
+      let cx = sx, cy = sy
+
+      for (let step = 0; step < MAX_RIVER_LEN; step++) {
+        const cKey     = cy * mapWidth + cx
+        visited.add(cKey)
+        const cTerrain = tiles[cKey * TILE_STRIDE + TILE_TERRAIN] as TerrainType
+        if (cTerrain === TerrainType.Ocean || cTerrain === TerrainType.Coast) break
+
+        // Primary: lowest-elevation unvisited neighbour (avoids backtracking)
+        let bestElev = Infinity, bestNx = -1, bestNy = -1, bestOut = 0, bestIn = 0
+        for (const [dx, dy, rOut, rIn] of DIRS4) {
+          const nx = cx + dx, ny = cy + dy
+          if (nx < 0 || nx >= mapWidth || ny < 0 || ny >= mapHeight) continue
+          if (visited.has(ny * mapWidth + nx)) continue
+          const elev = elevMap[ny * mapWidth + nx]
+          if (elev < bestElev) { bestElev = elev; bestNx = nx; bestNy = ny; bestOut = rOut; bestIn = rIn }
+        }
+
+        // Fallback: surrounded by visited tiles — allow revisit to escape basins
+        if (bestNx < 0) {
+          for (const [dx, dy, rOut, rIn] of DIRS4) {
+            const nx = cx + dx, ny = cy + dy
+            if (nx < 0 || nx >= mapWidth || ny < 0 || ny >= mapHeight) continue
+            const elev = elevMap[ny * mapWidth + nx]
+            if (elev < bestElev) { bestElev = elev; bestNx = nx; bestNy = ny; bestOut = rOut; bestIn = rIn }
+          }
+        }
+
+        if (bestNx < 0) break  // at map edge — no neighbours at all
+
+        // Mark the shared edge on both tiles
+        tiles[cKey * TILE_STRIDE + TILE_RIVER]                         = (tiles[cKey * TILE_STRIDE + TILE_RIVER] | bestOut) & 0xFF
+        tiles[(bestNy * mapWidth + bestNx) * TILE_STRIDE + TILE_RIVER] = (tiles[(bestNy * mapWidth + bestNx) * TILE_STRIDE + TILE_RIVER] | bestIn) & 0xFF
+
+        cx = bestNx; cy = bestNy
+      }
+    }
+  }
+
+  self.postMessage({ type: 'progress', pct: 85 })
+
+  // ── 3. Place starting units ─────────────────────────────────────────────────
   // Each civ starts with exactly: Settler, Worker, Scout, Warrior
   // All 4 units are placed in a 3×3 cluster around a random land starting tile.
 
