@@ -15,8 +15,10 @@ export function InfoPanel(): React.ReactElement | null {
   const availableActions = useGameStore(s => s.availableActions)
   const performActionFn  = useGameStore(s => s.performActionFn)
   const isHumanTurn      = useGameStore(s => s.currentPlayer?.isHuman ?? false)
+  const activeCityKey    = useGameStore(s => s.activeCityKey)
 
   if (!tile && !unit) return null
+  if (unit && activeCityKey !== null) return null
 
   return (
     <div style={panelStyle}>

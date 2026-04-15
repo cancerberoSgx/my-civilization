@@ -16,10 +16,10 @@ import type { Spritesheet, Texture } from 'pixi.js'
 import {
   TILE_SIZE,
   TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE, TILE_RESOURCE, TILE_IMPROVEMENT, TILE_RIVER,
-  UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF,
+  UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF,
   MAX_UNITS, MIN_ZOOM, MAX_ZOOM,
 } from './shared/constants'
-import { TerrainType, FeatureType, ResourceType, ImprovementType } from './shared/types'
+import { TerrainType, FeatureType, ResourceType, ImprovementType, UnitTypeId } from './shared/types'
 import type { GameConfig, MapgenRequest, MapgenResponse } from './shared/types'
 import type { SavedGameState } from './shared/saveFormat'
 import { bytesToBase64, base64ToBytes } from './shared/saveFormat'
@@ -298,6 +298,19 @@ async function buildGameScene(
     }
 
     const uid = unitRenderer.unitAt(tx, ty)
+
+    // Check if clicked a City unit — open city modal instead of normal selection
+    if (uid >= 0) {
+      const typeId = unitView.getUint8(uid * UNIT_STRIDE + UNIT_TYPE_OFF)
+      if (typeId === UnitTypeId.City) {
+        const utx = unitView.getUint16(uid * UNIT_STRIDE + UNIT_X_OFF, true)
+        const uty = unitView.getUint16(uid * UNIT_STRIDE + UNIT_Y_OFF, true)
+        gs().openCity(`${utx},${uty}`)
+        return
+      }
+    }
+
+    gs().closeCity()
     unitRenderer.selectUnit(uid)
     gs().setSelectedUnit(uid >= 0 ? unitRenderer.getUnitInfo(uid) : null)
     if (uid >= 0) game.focusUnit(uid)
@@ -344,6 +357,7 @@ async function buildGameScene(
     keys.add(ev.key)
     if (ev.key === 'Escape') {
       gs().setSelectedTile(null); gs().setSelectedUnit(null)
+      gs().closeCity()
       tileRenderer.setSelected(-1, -1); unitRenderer.selectUnit(-1)
     }
     if (ev.key === 'm' || ev.key === 'M') gs().toggleMinimap()

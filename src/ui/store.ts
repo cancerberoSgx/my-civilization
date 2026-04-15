@@ -3,6 +3,7 @@ import type { TileInfo, SelectedUnit, GameConfig, ActionDef } from '../shared/ty
 import { UnitTypeId, TerrainType, ResourceType, ImprovementType, ActionId } from '../shared/types'
 import type { Player } from '../game/Game'
 import type { SaveFile } from '../shared/saveFormat'
+import type { City, CommerceRates } from '../game/city/types'
 
 export interface ViewportBounds {
   left: number
@@ -64,6 +65,16 @@ interface GameStore {
   builderResourceType:    ResourceType
   builderImprovementType: ImprovementType
   builderApply:           ((tx: number, ty: number) => void) | null
+
+  // ── City management ───────────────────────────────────────────────────────────
+  cities:         Map<string, City>
+  activeCityKey:  string | null
+  commerceRates:  CommerceRates
+
+  openCity(key: string): void
+  closeCity(): void
+  updateCity(key: string, city: City): void
+  setCommerceRates(rates: CommerceRates): void
 
   // ── Grid ──────────────────────────────────────────────────────────────────────
   gridVisible: boolean
@@ -148,6 +159,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   builderResourceType:    ResourceType.None,
   builderImprovementType: ImprovementType.None,
   builderApply:           null,
+
+  cities:        new Map(),
+  activeCityKey: null,
+  commerceRates: { scienceRate: 60, goldRate: 30, cultureRate: 10 },
+
+  openCity:   (key)       => set({ activeCityKey: key }),
+  closeCity:  ()          => set({ activeCityKey: null }),
+  updateCity: (key, city) => set(s => {
+    const next = new Map(s.cities)
+    next.set(key, city)
+    return { cities: next }
+  }),
+  setCommerceRates: (rates) => set({ commerceRates: rates }),
 
   gridVisible: false,
   setGridFn:   null,

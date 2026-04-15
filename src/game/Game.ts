@@ -23,6 +23,12 @@ import type { ActionDef, ActionContext } from '../shared/types'
 import type { SavedGameState } from '../shared/saveFormat'
 import { UNIT_MAP } from '../data/units'
 import { ACTION_DEFS } from '../data/actions'
+import { SpecialistType } from './city/types'
+import type { City, CityId, TileYield, WorkedTile, CityTurnContext } from './city/types'
+import { getBuildingDef } from './city/definitions'
+import { processCityTurn } from './city/turnProcessor'
+import { useGameStore } from '../ui/store'
+import { TERRAIN_MAP } from '../data/terrains'
 
 // ── Player definition ─────────────────────────────────────────────────────────
 
@@ -422,6 +428,40 @@ export class Game {
         // Place city at same tile
         this.placeUnit(tx, ty, UnitTypeId.City, civId)
 
+        // Build initial cultural border tiles (3×3 ring minus center, within map bounds)
+        const cultureBorderTiles: number[] = []
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue
+            const bx = tx + dx, by = ty + dy
+            if (bx >= 0 && bx < this.mapWidth && by >= 0 && by < this.mapHeight) {
+              cultureBorderTiles.push(by * this.mapWidth + bx)
+            }
+          }
+        }
+
+        const cityId = `city-${tx}-${ty}` as CityId
+        const newCity: City = {
+          id:          cityId,
+          name:        'City',
+          ownerId:     civId,
+          foundedTurn: this.turnNumber,
+          x: tx, y: ty,
+          population:  1,
+          storedFood:  0,
+          citizenAssignments: [
+            { kind: 'specialist', specialistType: SpecialistType.Scientist },
+          ],
+          productionQueue:    [],
+          builtBuildings:     [],
+          greatPersonPool:    { points: 0, greatPeopleBorn: 0, sources: {} },
+          health:             5,
+          happiness:          5,
+          storedCulture:      0,
+          cultureBorderTiles,
+        }
+        useGameStore.getState().updateCity(`${tx},${ty}`, newCity)
+
         this.cb.onUnitsChanged(this.unitCount)
         this._advanceActiveUnit()
         return true
@@ -459,11 +499,46 @@ export class Game {
   }
 
   private _nextTurn(): void {
+    this._processCitiesForPlayer(this.currentPlayer.id)
     const wasLast = this.currentPlayerIdx === this.players.length - 1
     this.currentPlayerIdx = (this.currentPlayerIdx + 1) % this.players.length
     if (wasLast) this.turnNumber++
     this._setActiveUnit(-1)
     this._beginTurn()
+  }
+
+  private _getTileYield(tx: number, ty: number): TileYield {
+    if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) {
+      return { food: 0, production: 0, commerce: 0 }
+    }
+    const base    = (ty * this.mapWidth + tx) * TILE_STRIDE
+    const terrain = this.tileBytes[base + TILE_TERRAIN] as TerrainType
+    const def     = TERRAIN_MAP.get(terrain)
+    return def
+      ? { food: def.food, production: def.production, commerce: def.commerce }
+      : { food: 0, production: 0, commerce: 0 }
+  }
+
+  private _processCitiesForPlayer(playerId: number): void {
+    const gs = useGameStore.getState()
+    for (const [key, city] of gs.cities) {
+      if (city.ownerId !== playerId) continue
+      const centerTileYields = this._getTileYield(city.x, city.y)
+      const workedTiles: WorkedTile[] = city.citizenAssignments
+        .filter(a => a.kind === 'tile')
+        .map(a => ({
+          tileKey: a.tileKey,
+          yields:  this._getTileYield(a.tileKey % this.mapWidth, Math.floor(a.tileKey / this.mapWidth)),
+        }))
+      const context: CityTurnContext = {
+        centerTileYields,
+        workedTiles,
+        buildings:     city.builtBuildings.map(id => getBuildingDef(id)),
+        commerceRates: gs.commerceRates,
+        turn:          this.turnNumber,
+      }
+      gs.updateCity(key, processCityTurn(city, context))
+    }
   }
 
   // ── Private: AI ───────────────────────────────────────────────────────────

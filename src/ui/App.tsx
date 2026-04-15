@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
+import { CityModal } from './CityModal'
 import { Minimap } from './Minimap'
 import { BuilderPanel } from './BuilderPanel'
 import { FileMenu } from './FileMenu'
@@ -311,6 +312,9 @@ function GameHUD(): React.ReactElement {
 
       {/* Tile / unit info panel */}
       <InfoPanel />
+
+      {/* City management modal */}
+      <CityModal />
 
       {/* Minimap */}
       <Minimap />

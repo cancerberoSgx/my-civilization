@@ -223,9 +223,18 @@ allow the user to toggle grid lines on/off from the menu
 see prompts/city-management-context-and-logic-1.md
 
 ## ui
+see prompts/city-management-ui.md
 
-role: you are helping me ask a prompt to claude code to implement the city management and production of a civilization 4 like game. 
-given city management context and logic defined in prompts/city-management-1.md, build a claude-code prompt so it can build the city management UI. When clicking a city unit, the city management is displayed as a modal which display the city adjacent tiles map, workers assignament, production queue, city food and growth, specialists and other info. Allow the user to change city workers assignament, and allow to administer the production queue. It also display current production item and progress. total foor, production and commerce output.
+p2: 
+on city management, when a turn pass, all production/hammers and food must increase. Food -> turns to grow, production -> current production grow
+
+
+
+
+
 
 # FUTURE
 
+# diplomacy
+
+# civilizatoins
