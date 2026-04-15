@@ -37,6 +37,12 @@ import { CameraViewport }     from './renderer/CameraViewport'
 import { Game, buildPlayers } from './game/Game'
 import { useGameStore }       from './ui/store'
 import { App }                from './ui/App'
+import { initDiplomacy } from './game/diplomacy/relations'
+import {
+  declareWar, makePeace, openBorders, cancelOpenBorders,
+  proposeAlliance, breakAlliance,
+} from './game/diplomacy/relations'
+import type { DiplomacyEvent } from './game/diplomacy/types'
 
 import MapgenWorker from './workers/mapgen.worker?worker'
 
@@ -155,8 +161,10 @@ async function buildGameScene(
   }
 
   // ── Game instance ───────────────────────────────────────────────────────────
-  const players = buildPlayers(config.numCivs, config.civColors)
+  const players = buildPlayers(config.numCivs, config.civColors, config.playerCivs ?? [])
   const game    = new Game(unitBuffer, tileBuffer, unitCount, config.mapWidth, config.mapHeight, players)
+  gs().setPlayers(players)
+  gs().setDiplomacy(initDiplomacy(players.length))
   activeGame    = game
 
   game.cb = {
@@ -213,6 +221,30 @@ async function buildGameScene(
   )
 
   gs().setPerformActionFn(actionId => game.performAction(game.activeUnitId, actionId))
+
+  // ── Diplomacy actions ────────────────────────────────────────────────────────
+  gs().setDiplomacyActionFn((action, targetId) => {
+    const humanId = 1
+    const state   = gs()
+    let   map     = state.diplomacy
+    switch (action) {
+      case 'declareWar':        map = declareWar(map,        humanId, targetId); break
+      case 'makePeace':         map = makePeace(map,         humanId, targetId); break
+      case 'openBorders':       map = openBorders(map,       humanId, targetId); break
+      case 'cancelOpenBorders': map = cancelOpenBorders(map, humanId, targetId); break
+      case 'proposeAlliance':   map = proposeAlliance(map,   humanId, targetId); break
+      case 'breakAlliance':     map = breakAlliance(map,     humanId, targetId); break
+    }
+    state.setDiplomacy(map)
+    const event: DiplomacyEvent = {
+      turn:   game.turn,
+      fromId: humanId,
+      toId:   targetId,
+      action: action as DiplomacyEvent['action'],
+      isAI:   false,
+    }
+    state.addDiplomacyEvent(event)
+  })
 
   // ── Game Builder ────────────────────────────────────────────────────────────
   gs().setBuilderApply((tx, ty) => {

@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import { useGameStore } from './store'
 import { InfoPanel } from './InfoPanel'
 import { CityModal } from './CityModal'
+import { ForeignAdvisor } from './ForeignAdvisor'
 import { Minimap } from './Minimap'
 import { BuilderPanel } from './BuilderPanel'
 import { FileMenu } from './FileMenu'
+import { CIV_DEFINITIONS } from '../data/civilizations'
 import { CIV_PALETTE } from '../shared/constants'
 import { MapLayout } from '../shared/types'
 import type { GameConfig } from '../shared/types'
@@ -54,18 +56,35 @@ const LAYOUT_OPTIONS: { value: MapLayout; label: string; desc: string }[] = [
   { value: MapLayout.Lakes,      label: 'Lakes',       desc: 'All land with scattered freshwater lakes' },
 ]
 
+function shuffled<T>(arr: readonly T[]): T[] {
+  const out = [...arr]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!]
+  }
+  return out
+}
+
 function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React.ReactElement {
   const loadSave = useGameStore(s => s.loadSave)
 
-  const [mapWidth,  setMapWidth]  = useState(80)
-  const [mapHeight, setMapHeight] = useState(80)
-  const [numCivs,   setNumCivs]   = useState(2)
-  const [layout,    setLayout]    = useState<MapLayout>(MapLayout.Continents)
+  const [mapWidth,      setMapWidth]      = useState(80)
+  const [mapHeight,     setMapHeight]     = useState(80)
+  const [numCivs,       setNumCivs]       = useState(2)
+  const [layout,        setLayout]        = useState<MapLayout>(MapLayout.Continents)
+  const [playerCiv,     setPlayerCiv]     = useState(CIV_DEFINITIONS[0]!.name)
+  const [playerLeader,  setPlayerLeader]  = useState(CIV_DEFINITIONS[0]!.leaders[0] ?? '')
 
   // Load-saves section state
   const [showLoadList, setShowLoadList] = useState(false)
   const [saves,        setSaves]        = useState<SaveEntry[]>([])
   const [loadStatus,   setLoadStatus]   = useState('')
+
+  function handleCivChange(civName: string) {
+    setPlayerCiv(civName)
+    const def = CIV_DEFINITIONS.find(c => c.name === civName)
+    setPlayerLeader(def?.leaders[0] ?? '')
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -73,7 +92,19 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
     const h = Math.max(20, Math.min(500, mapHeight))
     const n = Math.max(2,  Math.min(CIV_PALETTE.length - 1, numCivs))
     const civColors = CIV_PALETTE.slice(0, n + 1)
-    onStart({ mapWidth: w, mapHeight: h, numCivs: n, civColors, layout })
+
+    const usedCivs  = new Set([playerCiv])
+    const remaining = shuffled(CIV_DEFINITIONS.filter(c => !usedCivs.has(c.name)))
+    const aiCivs    = remaining.slice(0, n - 1)
+    const playerCivs = [
+      { civName: playerCiv, leaderName: playerLeader },
+      ...aiCivs.map(c => ({
+        civName:    c.name,
+        leaderName: c.leaders[Math.floor(Math.random() * c.leaders.length)] ?? c.name,
+      })),
+    ]
+
+    onStart({ mapWidth: w, mapHeight: h, numCivs: n, civColors, layout, playerCivs })
   }
 
   function openLoadList() {
@@ -105,6 +136,32 @@ function NewGameMenu({ onStart }: { onStart: (cfg: GameConfig) => void }): React
     <div style={menuOverlay}>
       <form style={menuBox} onSubmit={handleSubmit}>
         <div style={loadingTitle}>Civ TS</div>
+
+        <div style={fieldGroup}>
+          <label style={labelStyle}>Civilization</label>
+          <select
+            value={playerCiv}
+            onChange={e => handleCivChange(e.target.value)}
+            style={{ ...selectStyle, width: 148 }}
+          >
+            {CIV_DEFINITIONS.map(c => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={fieldGroup}>
+          <label style={labelStyle}>Leader</label>
+          <select
+            value={playerLeader}
+            onChange={e => setPlayerLeader(e.target.value)}
+            style={{ ...selectStyle, width: 148 }}
+          >
+            {(CIV_DEFINITIONS.find(c => c.name === playerCiv)?.leaders ?? []).map(l => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
 
         <div style={fieldGroup}>
           <label style={labelStyle}>Map Width</label>
@@ -226,8 +283,10 @@ function GameHUD(): React.ReactElement {
   const toggleMinimap   = useGameStore(s => s.toggleMinimap)
   const builderMode     = useGameStore(s => s.builderMode)
   const toggleBuilder   = useGameStore(s => s.toggleBuilderMode)
-  const gridVisible     = useGameStore(s => s.gridVisible)
-  const toggleGrid      = useGameStore(s => s.toggleGrid)
+  const gridVisible           = useGameStore(s => s.gridVisible)
+  const toggleGrid            = useGameStore(s => s.toggleGrid)
+  const foreignAdvisorOpen    = useGameStore(s => s.foreignAdvisorOpen)
+  const toggleForeignAdvisor  = useGameStore(s => s.toggleForeignAdvisor)
 
   const playerColorCss = currentPlayer
     ? `#${currentPlayer.color.toString(16).padStart(6, '0')}`
@@ -303,6 +362,14 @@ function GameHUD(): React.ReactElement {
           Builder
         </button>
 
+        <button
+          style={{ ...btnStyle, ...(foreignAdvisorOpen ? btnDiplomacyActive : {}) }}
+          onClick={toggleForeignAdvisor}
+          title="Foreign Advisor — diplomacy"
+        >
+          Diplomacy
+        </button>
+
         <FileMenu />
 
         <span style={{ ...hudItem, opacity: 0.45, fontSize: 11 }}>
@@ -321,6 +388,9 @@ function GameHUD(): React.ReactElement {
 
       {/* Game Builder side panel */}
       <BuilderPanel />
+
+      {/* Foreign Advisor (diplomacy) */}
+      <ForeignAdvisor />
 
       {/* Keyboard hints */}
       <div style={hintsStyle}>
@@ -584,6 +654,12 @@ const btnBuilderActive: React.CSSProperties = {
   background: 'rgba(180,100,20,0.3)',
   border:     '1px solid rgba(255,160,60,0.6)',
   color:      '#ffbb66',
+}
+
+const btnDiplomacyActive: React.CSSProperties = {
+  background: 'rgba(100,60,180,0.3)',
+  border:     '1px solid rgba(160,110,255,0.6)',
+  color:      '#cc99ff',
 }
 
 const btnEndTurnDisabled: React.CSSProperties = {

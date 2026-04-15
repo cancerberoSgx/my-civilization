@@ -4,6 +4,7 @@ import { UnitTypeId, TerrainType, ResourceType, ImprovementType, ActionId } from
 import type { Player } from '../game/Game'
 import type { SaveFile } from '../shared/saveFormat'
 import type { City, CommerceRates } from '../game/city/types'
+import type { DiplomacyMap, DiplomacyEvent } from '../game/diplomacy/types'
 
 export interface ViewportBounds {
   left: number
@@ -65,6 +66,21 @@ interface GameStore {
   builderResourceType:    ResourceType
   builderImprovementType: ImprovementType
   builderApply:           ((tx: number, ty: number) => void) | null
+
+  // ── Players list (set once on game start) ────────────────────────────────────
+  players: readonly Player[]
+  setPlayers(players: readonly Player[]): void
+
+  // ── Diplomacy ─────────────────────────────────────────────────────────────────
+  diplomacy:           DiplomacyMap
+  diplomacyEvents:     DiplomacyEvent[]
+  foreignAdvisorOpen:  boolean
+  diplomacyActionFn:   ((action: string, targetId: number) => void) | null
+
+  setDiplomacy(map: DiplomacyMap): void
+  addDiplomacyEvent(event: DiplomacyEvent): void
+  setDiplomacyActionFn(fn: (action: string, targetId: number) => void): void
+  toggleForeignAdvisor(): void
 
   // ── City management ───────────────────────────────────────────────────────────
   cities:         Map<string, City>
@@ -159,6 +175,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   builderResourceType:    ResourceType.None,
   builderImprovementType: ImprovementType.None,
   builderApply:           null,
+
+  players:            [],
+  setPlayers: (p) => set({ players: p }),
+
+  diplomacy:           new Map(),
+  diplomacyEvents:     [],
+  foreignAdvisorOpen:  false,
+  diplomacyActionFn:   null,
+
+  setDiplomacy:        (map)   => set({ diplomacy: map }),
+  addDiplomacyEvent:   (event) => set(s => ({
+    diplomacyEvents: [event, ...s.diplomacyEvents].slice(0, 20),
+  })),
+  setDiplomacyActionFn: (fn)  => set({ diplomacyActionFn: fn }),
+  toggleForeignAdvisor: ()    => set(s => ({ foreignAdvisorOpen: !s.foreignAdvisorOpen })),
 
   cities:        new Map(),
   activeCityKey: null,

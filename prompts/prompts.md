@@ -229,12 +229,21 @@ p2:
 on city management, when a turn pass, all production/hammers and food must increase. Food -> turns to grow, production -> current production grow
 
 
+# diplomacy
+
+see prompts/diplomacy-context-and-logic-1.md
+
+
+
+
 
 
 
 
 # FUTURE
 
-# diplomacy
+# combat
 
 # civilizatoins
+
+## difficulty level

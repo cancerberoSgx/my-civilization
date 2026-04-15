@@ -27,26 +27,40 @@ import { SpecialistType } from './city/types'
 import type { City, CityId, TileYield, WorkedTile, CityTurnContext } from './city/types'
 import { getBuildingDef } from './city/definitions'
 import { processCityTurn } from './city/turnProcessor'
+import { advanceDiplomacyTurn } from './diplomacy/relations'
+import { runAIDiplomacy } from './diplomacy/aiDiplomacy'
+import type { DiplomacyEvent } from './diplomacy/types'
 import { useGameStore } from '../ui/store'
 import { TERRAIN_MAP } from '../data/terrains'
 
 // ── Player definition ─────────────────────────────────────────────────────────
 
 export interface Player {
-  id: number        // matches UNIT_CIV_OFF value (1-based)
-  name: string
-  isHuman: boolean
-  color: number     // 0xRRGGBB for UI display
+  id:         number   // matches UNIT_CIV_OFF value (1-based)
+  name:       string
+  isHuman:    boolean
+  color:      number   // 0xRRGGBB for UI display
+  civName:    string   // e.g. "Rome"
+  leaderName: string   // e.g. "Julius Caesar"
 }
 
 /** Build a players array from config — player 1 is human, rest are AI. */
-export function buildPlayers(numCivs: number, civColors: number[]): Player[] {
-  return Array.from({ length: numCivs }, (_, i) => ({
-    id:      i + 1,
-    name:    i === 0 ? 'Player 1' : `AI ${i}`,
-    isHuman: i === 0,
-    color:   civColors[i + 1] ?? 0x888888,
-  }))
+export function buildPlayers(
+  numCivs:    number,
+  civColors:  number[],
+  playerCivs: readonly { readonly civName: string; readonly leaderName: string }[] = [],
+): Player[] {
+  return Array.from({ length: numCivs }, (_, i) => {
+    const civ = playerCivs[i]
+    return {
+      id:         i + 1,
+      name:       i === 0 ? 'Player 1' : `AI ${i}`,
+      isHuman:    i === 0,
+      color:      civColors[i + 1] ?? 0x888888,
+      civName:    civ?.civName    ?? (i === 0 ? 'Player' : `AI ${i}`),
+      leaderName: civ?.leaderName ?? '',
+    }
+  })
 }
 
 // ── A* node (module-level to avoid per-call type redeclarations) ──────────────
@@ -501,10 +515,28 @@ export class Game {
   private _nextTurn(): void {
     this._processCitiesForPlayer(this.currentPlayer.id)
     const wasLast = this.currentPlayerIdx === this.players.length - 1
+    if (wasLast) this._advanceDiplomacy()
     this.currentPlayerIdx = (this.currentPlayerIdx + 1) % this.players.length
     if (wasLast) this.turnNumber++
     this._setActiveUnit(-1)
     this._beginTurn()
+  }
+
+  private _advanceDiplomacy(): void {
+    const gs        = useGameStore.getState()
+    const playerIds = this.players.map(p => p.id)
+    let   map       = advanceDiplomacyTurn(gs.diplomacy, playerIds)
+    const events: DiplomacyEvent[] = []
+
+    for (const p of this.players) {
+      if (p.isHuman) continue
+      const result = runAIDiplomacy(map, p, this.players, this.turnNumber)
+      map = result.nextMap
+      events.push(...result.events)
+    }
+
+    gs.setDiplomacy(map)
+    events.forEach(e => gs.addDiplomacyEvent(e))
   }
 
   private _getTileYield(tx: number, ty: number): TileYield {

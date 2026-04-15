@@ -170,6 +170,8 @@ export interface GameConfig {
   /** index 0 unused; [1..numCivs] are the hex colours for each civ */
   civColors: number[]
   layout:    MapLayout
+  /** One entry per player (index 0 = human, 1..n-1 = AI). Optional for save compatibility. */
+  playerCivs?: readonly { readonly civName: string; readonly leaderName: string }[]
 }
 
 // ── Worker messages ──────────────────────────────────────────────────────────
