@@ -6,6 +6,7 @@ import { ForeignAdvisor } from './ForeignAdvisor'
 import { Minimap } from './Minimap'
 import { BuilderPanel } from './BuilderPanel'
 import { FileMenu } from './FileMenu'
+import { CombatOddsTooltip } from './CombatOddsTooltip'
 import { CIV_DEFINITIONS } from '../data/civilizations'
 import { CIV_PALETTE } from '../shared/constants'
 import { MapLayout } from '../shared/types'
@@ -391,6 +392,9 @@ function GameHUD(): React.ReactElement {
 
       {/* Foreign Advisor (diplomacy) */}
       <ForeignAdvisor />
+
+      {/* Combat odds tooltip (shown while right-click held over enemy unit) */}
+      <CombatOddsTooltip />
 
       {/* Keyboard hints */}
       <div style={hintsStyle}>

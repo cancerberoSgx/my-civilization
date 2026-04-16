@@ -141,6 +141,7 @@ async function buildGameScene(
   viewport.addChild(tileRenderer.moveLayer)
   viewport.addChild(tileRenderer.pathLayer)
   viewport.addChild(unitRenderer.layer)
+  viewport.addChild(unitRenderer.hpBarLayer)
   viewport.addChild(tileRenderer.highlightLayer)
 
   unitRenderer.setBuffers(unitBuffer, unitCount)
@@ -213,9 +214,27 @@ async function buildGameScene(
       gs().setPendingCount(0)
     },
 
-    onCombat(_event) {
-      // HP changes and onUnitsChanged handle all visual refreshes.
-      // Wire store.addCombatEvent here when a combat log UI is added.
+    onCombat(event) {
+      const {
+        attackerUid, defenderUid, attackerWon, defenderCaptured,
+        attackerFromX, attackerFromY, defenderTileX, defenderTileY,
+      } = event
+
+      // Bounce animation: attacker lunges toward defender, then eases to final tile
+      unitRenderer.animateCombat(
+        attackerUid,
+        attackerFromX, attackerFromY,
+        defenderTileX, defenderTileY,
+        attackerWon,
+        defenderCaptured,
+      )
+
+      // Fade-out for killed units (not captures — those change ownership instead)
+      if (attackerWon && !defenderCaptured) {
+        unitRenderer.animateDeath(defenderUid)
+      } else if (!attackerWon && !defenderCaptured) {
+        unitRenderer.animateDeath(attackerUid)
+      }
     },
   }
 
@@ -305,7 +324,10 @@ async function buildGameScene(
 
   canvas.addEventListener('pointerdown', (e: PointerEvent) => {
     ptrDownX = e.clientX; ptrDownY = e.clientY
-    if (e.button === 2) { rightDown = true; previewTx = -1; previewTy = -1 }
+    if (e.button === 2) {
+      rightDown = true; previewTx = -1; previewTy = -1
+      gs().setCombatOddsTooltip(null)
+    }
   }, { signal })
 
   canvas.addEventListener('pointerup', (e: PointerEvent) => {
@@ -315,6 +337,7 @@ async function buildGameScene(
 
     if (e.button === 2) {
       rightDown = false; previewTx = -1; previewTy = -1
+      gs().setCombatOddsTooltip(null)
       const prevActiveUid = game.activeUnitId
       tileRenderer.setPathPreview([])
       if (tx >= 0 && tx < config.mapWidth && ty >= 0 && ty < config.mapHeight) {
@@ -378,12 +401,28 @@ async function buildGameScene(
     const ty = Math.floor(w.y / TILE_SIZE)
     tileRenderer.setHover(tx, ty)
 
-    if (rightDown && game.activeUnitId >= 0 && (tx !== previewTx || ty !== previewTy)) {
-      previewTx = tx; previewTy = ty
-      if (tx >= 0 && tx < config.mapWidth && ty >= 0 && ty < config.mapHeight) {
-        tileRenderer.setPathPreview(game.previewPathTo(tx, ty) ?? [])
-      } else {
-        tileRenderer.setPathPreview([])
+    if (rightDown && game.activeUnitId >= 0) {
+      // Always update tooltip position when mouse moves (for smooth tracking)
+      if (tx !== previewTx || ty !== previewTy) {
+        previewTx = tx; previewTy = ty
+        if (tx >= 0 && tx < config.mapWidth && ty >= 0 && ty < config.mapHeight) {
+          // Show combat odds if hovering over an enemy unit at war, otherwise path preview
+          const odds = game.previewCombatOdds(tx, ty)
+          if (odds !== null) {
+            gs().setCombatOddsTooltip({ x: e.clientX, y: e.clientY, pct: odds })
+            tileRenderer.setPathPreview([])
+          } else {
+            gs().setCombatOddsTooltip(null)
+            tileRenderer.setPathPreview(game.previewPathTo(tx, ty) ?? [])
+          }
+        } else {
+          gs().setCombatOddsTooltip(null)
+          tileRenderer.setPathPreview([])
+        }
+      } else if (gs().combatOddsTooltip !== null) {
+        // Same tile but mouse moved — keep tooltip but update its screen position
+        const tooltip = gs().combatOddsTooltip!
+        gs().setCombatOddsTooltip({ ...tooltip, x: e.clientX, y: e.clientY })
       }
     }
   }, { signal })

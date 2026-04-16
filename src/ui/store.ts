@@ -92,6 +92,10 @@ interface GameStore {
   updateCity(key: string, city: City): void
   setCommerceRates(rates: CommerceRates): void
 
+  // ── Combat odds tooltip ──────────────────────────────────────────────────────
+  combatOddsTooltip: { x: number; y: number; pct: number } | null
+  setCombatOddsTooltip(t: { x: number; y: number; pct: number } | null): void
+
   // ── Grid ──────────────────────────────────────────────────────────────────────
   gridVisible: boolean
   setGridFn:   ((v: boolean) => void) | null
@@ -203,6 +207,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return { cities: next }
   }),
   setCommerceRates: (rates) => set({ commerceRates: rates }),
+
+  combatOddsTooltip: null,
+  setCombatOddsTooltip: (t) => set({ combatOddsTooltip: t }),
 
   gridVisible: false,
   setGridFn:   null,

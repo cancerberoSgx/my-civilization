@@ -234,11 +234,31 @@ on city management, when a turn pass, all production/hammers and food must incre
 see prompts/diplomacy-context-and-logic-1.md
 
 
+# combat
 
+This is a civilization 4 like game and your role is to be my prompt assistant. Your objective is to research about civilization rules and build a prompt to implement the following:
+Combat rules: 
+ * when two civilizations are at war and one of their units is moved on top of another's civilization unit, a combat happens on which one of the units dies and the other looses "energy"
+ * The main factor in a combat is unit's strength, howeger there are some combat rules like:
+   * some units have some bonus against other units, for example, pikeman have 100% bonus vs mounted units and axeman have 50% bonus against other melee units. Checkout notes/civ-reference/units.json combat bonnus and combat penalties
+   * when defending on certain terrain tiles there are also defense bonus, checkout notes/civ-reference/terrains.json "defense bonus"
+Create a prompt for modeling all this context and logic in the current project.
+   * Also there is always a randomness combat factor so sometime it can happen that unit with more strength ca loose a combat to units with less strength when no other factor applies.
 
+Please search on internet about other factors that might apply to civilization games combat and ask me if I want to include those in the final prompt too.
 
+Write a prompt so claude:
+ * Implement all this context and logic
+ * Implement the "attack" action
+ * write attack unit tests
+ * Make the randomness configurable
 
+p2:
 
+Implement combat UI (onCombat) with an 1 second animation on which attacking unit "bounces back and forward"
+implement unit's currentHp with an horizontal bar on top of the unit which, from 75% to 100% is green, from 40% to 75% is yellow and from 0% to 40% is red. Current unit hp is always shown when unit is selected.
+When an unit is destroyed there's a fade-out animation before is removed from the board.
+When user right click to a unit, while the right button is pressed it will display combat odds of winning which is a number between 0% and 100%
 
 # FUTURE
 

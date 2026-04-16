@@ -153,6 +153,49 @@ export function resolveCombat(
   }
 }
 
+// ── Combat odds ──────────────────────────────────────────────────────────────
+
+/**
+ * Returns the attacker's exact probability of winning (0–1) using the
+ * negative-binomial formula from Civ 4.
+ *
+ * P(attacker wins) = Σ_{k=0}^{n_d-1} C(n_a+k-1, k) · p^n_a · q^k
+ *
+ * where n_a = rounds attacker needs (ceil(defHP / atkDmg)),
+ *       n_d = rounds defender needs (ceil(atkHP / defDmg)),
+ *       p   = A / (A + D),  q = 1 – p.
+ */
+export function computeCombatOdds(
+  attacker:      CombatantStats,
+  defender:      CombatantStats,
+  crossingRiver: boolean,
+): number {
+  if (defender.baseStrength === 0) return 1.0   // non-combat → instant capture
+  if (attacker.baseStrength === 0) return 0.0
+
+  const A = computeModifiedStrength(attacker, defender, true,  crossingRiver)
+  const D = computeModifiedStrength(defender, attacker, false, false)
+
+  const p = A / (A + D)
+  const q = 1 - p
+
+  const atkDmg = Math.max(1, Math.floor(20 * (3 * A + D) / (3 * D + A)))
+  const defDmg = Math.max(1, Math.floor(20 * (3 * D + A) / (3 * A + D)))
+
+  const n_a = Math.ceil(defender.currentHp / atkDmg)
+  const n_d = Math.ceil(attacker.currentHp / defDmg)
+
+  let pWin = 0
+  let term = Math.pow(p, n_a)   // k=0: C(n_a-1,0)·p^n_a·q^0
+
+  for (let k = 0; k < n_d; k++) {
+    if (k > 0) term *= q * (n_a + k - 1) / k
+    pWin += term
+  }
+
+  return Math.min(1, Math.max(0, pWin))
+}
+
 // ── River-crossing helper ─────────────────────────────────────────────────────
 
 /**

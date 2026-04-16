@@ -32,7 +32,7 @@ import { runAIDiplomacy } from './diplomacy/aiDiplomacy'
 import type { DiplomacyEvent } from './diplomacy/types'
 import { useGameStore } from '../ui/store'
 import { TERRAIN_MAP } from '../data/terrains'
-import { resolveCombat, crossesRiver } from './combat/combat'
+import { resolveCombat, crossesRiver, computeCombatOdds } from './combat/combat'
 import type { CombatantStats } from './combat/types'
 
 // ── Player definition ─────────────────────────────────────────────────────────
@@ -72,13 +72,20 @@ interface ANode { x: number; y: number; g: number; f: number; parent: ANode | nu
 // ── Combat event ─────────────────────────────────────────────────────────────
 
 export interface CombatEventForUI {
-  attackerUid:     number
-  defenderUid:     number
-  attackerWon:     boolean
-  attackerHpFinal: number
-  defenderHpFinal: number
+  attackerUid:      number
+  defenderUid:      number
+  attackerWon:      boolean
+  attackerHpFinal:  number
+  defenderHpFinal:  number
   /** Total number of combat rounds fought. */
-  rounds:          number
+  rounds:           number
+  defenderCaptured: boolean
+  /** Attacker's tile before the attack (for bounce animation). */
+  attackerFromX:    number
+  attackerFromY:    number
+  /** Defender's tile (for bounce animation direction). */
+  defenderTileX:    number
+  defenderTileY:    number
 }
 
 // ── Callbacks wired by main.ts ────────────────────────────────────────────────
@@ -612,6 +619,73 @@ export class Game {
     }
   }
 
+  /**
+   * Returns the attacker's win probability (0–1) when the active unit would
+   * attack the enemy unit at (toX, toY), or null if no valid attack is possible.
+   * Used for the right-click combat-odds tooltip.
+   */
+  previewCombatOdds(toX: number, toY: number): number | null {
+    const uid = this._activeUnitId
+    if (uid < 0) return null
+
+    const defUid = this._unitAt(toX, toY)
+    if (defUid < 0) return null
+
+    const aOff = uid    * UNIT_STRIDE
+    const dOff = defUid * UNIT_STRIDE
+
+    const aCivId = this.unitBytes[aOff + UNIT_CIV_OFF]
+    const dCivId = this.unitBytes[dOff + UNIT_CIV_OFF]
+    if (!this._atWar(aCivId, dCivId)) return null
+
+    const ax = this.unitView.getUint16(aOff + UNIT_X_OFF, true)
+    const ay = this.unitView.getUint16(aOff + UNIT_Y_OFF, true)
+
+    const aTileOff = (ay * this.mapWidth + ax)   * TILE_STRIDE
+    const dTileOff = (toY * this.mapWidth + toX) * TILE_STRIDE
+
+    const aTypeId = this.unitBytes[aOff + UNIT_TYPE_OFF] as UnitTypeId
+    const dTypeId = this.unitBytes[dOff + UNIT_TYPE_OFF] as UnitTypeId
+    const aDef    = UNIT_MAP.get(aTypeId)
+    const dDef    = UNIT_MAP.get(dTypeId)
+    if (!aDef || !dDef || aDef.cannotAttack) return null
+
+    const attacker: CombatantStats = {
+      uid,
+      baseStrength:   aDef.strength,
+      currentHp:      this.unitBytes[aOff + UNIT_HP_OFF],
+      category:       aDef.category ?? UnitCategory.Melee,
+      civId:          aCivId,
+      tileX: ax, tileY: ay,
+      terrain:        this.tileBytes[aTileOff + TILE_TERRAIN] as TerrainType,
+      feature:        this.tileBytes[aTileOff + TILE_FEATURE] as FeatureType,
+      isInCity:       this._isCityTile(ax, ay),
+      fortifyTurns:   0,
+      cannotAttack:   false,
+      noTerrainBonus: aDef.noTerrainBonus ?? false,
+      combatBonuses:  aDef.combatBonuses  ?? [],
+    }
+
+    const defender: CombatantStats = {
+      uid:            defUid,
+      baseStrength:   dDef.strength,
+      currentHp:      this.unitBytes[dOff + UNIT_HP_OFF],
+      category:       dDef.category ?? UnitCategory.Melee,
+      civId:          dCivId,
+      tileX: toX, tileY: toY,
+      terrain:        this.tileBytes[dTileOff + TILE_TERRAIN] as TerrainType,
+      feature:        this.tileBytes[dTileOff + TILE_FEATURE] as FeatureType,
+      isInCity:       this._isCityTile(toX, toY),
+      fortifyTurns:   this._fortifyTurns.get(defUid) ?? 0,
+      cannotAttack:   dDef.cannotAttack ?? false,
+      noTerrainBonus: dDef.noTerrainBonus ?? false,
+      combatBonuses:  dDef.combatBonuses  ?? [],
+    }
+
+    const river = crossesRiver(this.tileBytes, this.mapWidth, ax, ay, toX, toY)
+    return computeCombatOdds(attacker, defender, river)
+  }
+
   // ── Private: combat helpers ───────────────────────────────────────────────
 
   /** Returns the uid of the first live unit at (tx, ty), or -1. */
@@ -723,12 +797,12 @@ export class Game {
       this._fortifyTurns.delete(uid)
       this._fortifiedUids.delete(uid)
     } else {
-      // Attacker won: remove defender, attacker advances onto the tile
+      // Attacker won: remove defender, attacker advances onto the tile.
+      // onUnitMoved is NOT fired here — onCombat drives the bounce→advance animation.
       this.unitBytes[dOff + UNIT_CIV_OFF]   = 0
       this.unitBytes[dOff + UNIT_MOVES_OFF] = 0
       this._fortifyTurns.delete(defenderUid)
       this._applyMove(uid, dx, dy)
-      this.cb.onUnitMoved(uid, ax, ay, dx, dy)
     }
 
     // Attacking always breaks fortification
@@ -736,12 +810,17 @@ export class Game {
     this._fortifiedUids.delete(uid)
 
     this.cb.onCombat({
-      attackerUid:     uid,
+      attackerUid:      uid,
       defenderUid,
-      attackerWon:     result.attackerWon,
-      attackerHpFinal: result.attackerHpFinal,
-      defenderHpFinal: result.defenderHpFinal,
-      rounds:          result.rounds.length,
+      attackerWon:      result.attackerWon,
+      attackerHpFinal:  result.attackerHpFinal,
+      defenderHpFinal:  result.defenderHpFinal,
+      rounds:           result.rounds.length,
+      defenderCaptured: result.defenderCaptured,
+      attackerFromX:    ax,
+      attackerFromY:    ay,
+      defenderTileX:    dx,
+      defenderTileY:    dy,
     })
     this.cb.onUnitsChanged(this.unitCount)
 
