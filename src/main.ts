@@ -212,6 +212,11 @@ async function buildGameScene(
       gs().setCanEndTurn(true)
       gs().setPendingCount(0)
     },
+
+    onCombat(_event) {
+      // HP changes and onUnitsChanged handle all visual refreshes.
+      // Wire store.addCombatEvent here when a combat log UI is added.
+    },
   }
 
   gs().setGameActions(

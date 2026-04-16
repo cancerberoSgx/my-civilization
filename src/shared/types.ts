@@ -1,5 +1,14 @@
 // ── Enums ────────────────────────────────────────────────────────────────────
 
+export enum UnitCategory {
+  Melee     = 'Melee',
+  Archery   = 'Archery',
+  Mounted   = 'Mounted',
+  Siege     = 'Siege',
+  Naval     = 'Naval',
+  NonCombat = 'NonCombat',
+}
+
 export enum TerrainType {
   Grassland = 0,
   Plains    = 1,
@@ -99,6 +108,19 @@ export interface TerrainDef {
   moveCost:   number   // 99 = impassable
 }
 
+export interface CombatBonus {
+  /** Bonus applies when fighting a unit of this category. */
+  vsCategory?: UnitCategory
+  /** Additive percent bonus, e.g. 100 = +100%. */
+  pct: number
+  onlyWhenAttacking?: boolean
+  onlyWhenDefending?: boolean
+  /** Bonus applies when attacking a city tile or defending in one. */
+  vsCity?: boolean
+  /** Bonus applies when defending on this specific terrain type. */
+  vsTerrain?: TerrainType
+}
+
 export interface UnitDef {
   id:       UnitTypeId
   name:     string
@@ -110,6 +132,14 @@ export interface UnitDef {
   sprite?:  string
   /** Unit-specific actions (Fortify is universal and not listed here). */
   actions?: ActionId[]
+  /** Combat category used for type-matchup bonuses. */
+  category?: UnitCategory
+  /** Additive combat bonuses this unit has in specific matchups. */
+  combatBonuses?: CombatBonus[]
+  /** If true, terrain and feature defense bonuses are ignored (Mounted, Siege). */
+  noTerrainBonus?: boolean
+  /** If true, the unit cannot initiate attacks (non-combat units). */
+  cannotAttack?: boolean
 }
 
 export interface ResourceDef {

@@ -15,10 +15,10 @@
 import {
   UNIT_STRIDE, UNIT_X_OFF, UNIT_Y_OFF, UNIT_TYPE_OFF, UNIT_CIV_OFF,
   UNIT_HP_OFF, UNIT_MOVES_OFF,
-  TILE_STRIDE, TILE_TERRAIN,
+  TILE_STRIDE, TILE_TERRAIN, TILE_FEATURE,
   MAX_UNITS,
 } from '../shared/constants'
-import { TerrainType, UnitTypeId, ActionId } from '../shared/types'
+import { TerrainType, FeatureType, UnitTypeId, UnitCategory, ActionId } from '../shared/types'
 import type { ActionDef, ActionContext } from '../shared/types'
 import type { SavedGameState } from '../shared/saveFormat'
 import { UNIT_MAP } from '../data/units'
@@ -27,11 +27,13 @@ import { SpecialistType } from './city/types'
 import type { City, CityId, TileYield, WorkedTile, CityTurnContext } from './city/types'
 import { getBuildingDef } from './city/definitions'
 import { processCityTurn } from './city/turnProcessor'
-import { advanceDiplomacyTurn } from './diplomacy/relations'
+import { advanceDiplomacyTurn, getRelation } from './diplomacy/relations'
 import { runAIDiplomacy } from './diplomacy/aiDiplomacy'
 import type { DiplomacyEvent } from './diplomacy/types'
 import { useGameStore } from '../ui/store'
 import { TERRAIN_MAP } from '../data/terrains'
+import { resolveCombat, crossesRiver } from './combat/combat'
+import type { CombatantStats } from './combat/types'
 
 // ── Player definition ─────────────────────────────────────────────────────────
 
@@ -67,6 +69,18 @@ export function buildPlayers(
 
 interface ANode { x: number; y: number; g: number; f: number; parent: ANode | null }
 
+// ── Combat event ─────────────────────────────────────────────────────────────
+
+export interface CombatEventForUI {
+  attackerUid:     number
+  defenderUid:     number
+  attackerWon:     boolean
+  attackerHpFinal: number
+  defenderHpFinal: number
+  /** Total number of combat rounds fought. */
+  rounds:          number
+}
+
 // ── Callbacks wired by main.ts ────────────────────────────────────────────────
 
 export interface GameCallbacks {
@@ -91,6 +105,8 @@ export interface GameCallbacks {
    * reload its buffer view with the new unit count.
    */
   onUnitsChanged(unitCount: number): void
+  /** Called after every combat resolution with the outcome summary. */
+  onCombat(event: CombatEventForUI): void
 }
 
 // ── Game ──────────────────────────────────────────────────────────────────────
@@ -114,6 +130,12 @@ export class Game {
   private _unitPaths = new Map<number, Array<{ x: number; y: number }>>()
   // Pending AI turn timer (kept so stop() can cancel it)
   private _aiTimeout: ReturnType<typeof setTimeout> | null = null
+  // RNG for combat — injectable for deterministic tests / seeded replays
+  private _rand: () => number = Math.random
+  // uid → consecutive turns the unit has been fortified
+  private _fortifyTurns = new Map<number, number>()
+  // units that explicitly chose Fortify this turn (incremented at next _beginTurn)
+  private _fortifiedUids = new Set<number>()
 
   private readonly unitView:  DataView
   private readonly unitBytes: Uint8Array
@@ -145,6 +167,15 @@ export class Game {
   get activeUnitId()    { return this._activeUnitId }
   get pendingCount()    { return this._pendingIds.size }
   get validMoves()      { return this._validMoves as ReadonlySet<number> }
+
+  // ── Combat configuration ───────────────────────────────────────────────────
+
+  /**
+   * Replace the RNG used for combat resolution.
+   * Pass `() => constant` for deterministic tests or a seeded PRNG for
+   * reproducible replays.  Defaults to Math.random.
+   */
+  setRand(fn: () => number): void { this._rand = fn }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -421,7 +452,8 @@ export class Game {
 
     switch (actionId) {
       case ActionId.Fortify:
-        // Fortify = skip this unit for the turn
+        // Fortify = skip this unit for the turn; mark it for fortification accumulation
+        this._fortifiedUids.add(uid)
         if (uid === this._activeUnitId) this.skipActiveUnit()
         return true
 
@@ -500,6 +532,13 @@ export class Game {
       if (movement === 0) continue   // immovable units (cities) don't join the turn cycle
       this.unitBytes[off + UNIT_MOVES_OFF] = movement
       this._pendingIds.add(i)
+
+      // Accumulate fortification turns for units that explicitly fortified last turn
+      if (this._fortifiedUids.has(i)) {
+        this._fortifyTurns.set(i, (this._fortifyTurns.get(i) ?? 0) + 1)
+      }
+      // Clear the "fortified this turn" flag for next turn's accounting
+      this._fortifiedUids.delete(i)
     }
 
     this.cb.onTurnStart(player, this.turnNumber, this._pendingIds.size)
@@ -573,6 +612,152 @@ export class Game {
     }
   }
 
+  // ── Private: combat helpers ───────────────────────────────────────────────
+
+  /** Returns the uid of the first live unit at (tx, ty), or -1. */
+  private _unitAt(tx: number, ty: number): number {
+    for (let i = 0; i < this.unitCount; i++) {
+      const off = i * UNIT_STRIDE
+      if (this.unitBytes[off + UNIT_CIV_OFF] === 0) continue  // dead / removed
+      const ux = this.unitView.getUint16(off + UNIT_X_OFF, true)
+      const uy = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+      if (ux === tx && uy === ty) return i
+    }
+    return -1
+  }
+
+  /** Returns true if civA and civB are currently at war. */
+  private _atWar(civA: number, civB: number): boolean {
+    const diplomacy = useGameStore.getState().diplomacy
+    if (!diplomacy) return false
+    return getRelation(diplomacy, civA, civB).status === 'war'
+  }
+
+  /** Returns true if any City unit sits on tile (tx, ty). */
+  private _isCityTile(tx: number, ty: number): boolean {
+    for (let i = 0; i < this.unitCount; i++) {
+      const off = i * UNIT_STRIDE
+      if (this.unitBytes[off + UNIT_CIV_OFF] === 0) continue
+      const ux = this.unitView.getUint16(off + UNIT_X_OFF, true)
+      const uy = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+      if (ux === tx && uy === ty &&
+          (this.unitBytes[off + UNIT_TYPE_OFF] as UnitTypeId) === UnitTypeId.City) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Resolve combat when `uid` moves onto an enemy-occupied tile.
+   * Handles HP application, unit removal / capture, and post-combat advancement.
+   */
+  private _doAttack(uid: number, defenderUid: number): void {
+    const aOff = uid         * UNIT_STRIDE
+    const dOff = defenderUid * UNIT_STRIDE
+
+    const ax = this.unitView.getUint16(aOff + UNIT_X_OFF, true)
+    const ay = this.unitView.getUint16(aOff + UNIT_Y_OFF, true)
+    const dx = this.unitView.getUint16(dOff + UNIT_X_OFF, true)
+    const dy = this.unitView.getUint16(dOff + UNIT_Y_OFF, true)
+
+    const aTileOff = (ay * this.mapWidth + ax) * TILE_STRIDE
+    const dTileOff = (dy * this.mapWidth + dx) * TILE_STRIDE
+
+    const aTypeId = this.unitBytes[aOff + UNIT_TYPE_OFF] as UnitTypeId
+    const dTypeId = this.unitBytes[dOff + UNIT_TYPE_OFF] as UnitTypeId
+    const aDef    = UNIT_MAP.get(aTypeId)!
+    const dDef    = UNIT_MAP.get(dTypeId)!
+
+    // Non-combat units cannot initiate attacks
+    if (aDef.cannotAttack) return
+
+    const attacker: CombatantStats = {
+      uid,
+      baseStrength:   aDef.strength,
+      currentHp:      this.unitBytes[aOff + UNIT_HP_OFF],
+      category:       aDef.category ?? UnitCategory.Melee,
+      civId:          this.unitBytes[aOff + UNIT_CIV_OFF],
+      tileX: ax, tileY: ay,
+      terrain:        this.tileBytes[aTileOff + TILE_TERRAIN] as TerrainType,
+      feature:        this.tileBytes[aTileOff + TILE_FEATURE] as FeatureType,
+      isInCity:       this._isCityTile(ax, ay),
+      fortifyTurns:   0,   // attacker is moving — fortification is broken
+      cannotAttack:   false,
+      noTerrainBonus: aDef.noTerrainBonus ?? false,
+      combatBonuses:  aDef.combatBonuses  ?? [],
+    }
+
+    const defender: CombatantStats = {
+      uid:            defenderUid,
+      baseStrength:   dDef.strength,
+      currentHp:      this.unitBytes[dOff + UNIT_HP_OFF],
+      category:       dDef.category ?? UnitCategory.Melee,
+      civId:          this.unitBytes[dOff + UNIT_CIV_OFF],
+      tileX: dx, tileY: dy,
+      terrain:        this.tileBytes[dTileOff + TILE_TERRAIN] as TerrainType,
+      feature:        this.tileBytes[dTileOff + TILE_FEATURE] as FeatureType,
+      isInCity:       this._isCityTile(dx, dy),
+      fortifyTurns:   this._fortifyTurns.get(defenderUid) ?? 0,
+      cannotAttack:   dDef.cannotAttack ?? false,
+      noTerrainBonus: dDef.noTerrainBonus ?? false,
+      combatBonuses:  dDef.combatBonuses  ?? [],
+    }
+
+    const river  = crossesRiver(this.tileBytes, this.mapWidth, ax, ay, dx, dy)
+    const result = resolveCombat(attacker, defender, river, this._rand)
+
+    // Apply HP changes to both units
+    this.unitBytes[aOff + UNIT_HP_OFF] = result.attackerHpFinal
+    this.unitBytes[dOff + UNIT_HP_OFF] = result.defenderHpFinal
+
+    if (result.defenderCaptured) {
+      // Non-combat unit captured: transfer ownership to attacker's civ
+      this.unitBytes[dOff + UNIT_CIV_OFF] = attacker.civId
+      this._fortifyTurns.delete(defenderUid)
+    } else if (!result.attackerWon) {
+      // Attacker lost: remove attacker from game
+      this.unitBytes[aOff + UNIT_CIV_OFF]   = 0
+      this.unitBytes[aOff + UNIT_MOVES_OFF] = 0
+      this._pendingIds.delete(uid)
+      this._fortifyTurns.delete(uid)
+      this._fortifiedUids.delete(uid)
+    } else {
+      // Attacker won: remove defender, attacker advances onto the tile
+      this.unitBytes[dOff + UNIT_CIV_OFF]   = 0
+      this.unitBytes[dOff + UNIT_MOVES_OFF] = 0
+      this._fortifyTurns.delete(defenderUid)
+      this._applyMove(uid, dx, dy)
+      this.cb.onUnitMoved(uid, ax, ay, dx, dy)
+    }
+
+    // Attacking always breaks fortification
+    this._fortifyTurns.delete(uid)
+    this._fortifiedUids.delete(uid)
+
+    this.cb.onCombat({
+      attackerUid:     uid,
+      defenderUid,
+      attackerWon:     result.attackerWon,
+      attackerHpFinal: result.attackerHpFinal,
+      defenderHpFinal: result.defenderHpFinal,
+      rounds:          result.rounds.length,
+    })
+    this.cb.onUnitsChanged(this.unitCount)
+
+    if (result.attackerWon || result.defenderCaptured) {
+      if (this.unitBytes[aOff + UNIT_MOVES_OFF] > 0) {
+        this._setActiveUnit(uid, true)
+      } else {
+        this._pendingIds.delete(uid)
+        this._advanceActiveUnit()
+      }
+    } else {
+      // Attacker died — advance to next unit
+      this._advanceActiveUnit()
+    }
+  }
+
   // ── Private: AI ───────────────────────────────────────────────────────────
 
   private _runAITurn(): void {
@@ -588,8 +773,30 @@ export class Game {
   private _moveRandom(uid: number): void {
     const off = uid * UNIT_STRIDE
     while (this.unitBytes[off + UNIT_MOVES_OFF] > 0) {
-      const ux   = this.unitView.getUint16(off + UNIT_X_OFF, true)
-      const uy   = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+      const ux      = this.unitView.getUint16(off + UNIT_X_OFF, true)
+      const uy      = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+      const unitCiv = this.unitBytes[off + UNIT_CIV_OFF]
+
+      // If the unit has been removed (died in a counter-attack), stop
+      if (unitCiv === 0) break
+
+      // Prefer attacking adjacent enemies when at war
+      let attacked = false
+      for (const [ddx, ddy] of DIRS) {
+        const tx = ux + ddx, ty = uy + ddy
+        if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) continue
+        const occ = this._unitAt(tx, ty)
+        if (occ >= 0) {
+          const occCiv = this.unitBytes[occ * UNIT_STRIDE + UNIT_CIV_OFF]
+          if (occCiv !== 0 && occCiv !== unitCiv && this._atWar(unitCiv, occCiv)) {
+            this._doAttack(uid, occ)
+            attacked = true
+            break
+          }
+        }
+      }
+      if (attacked) break  // _doAttack handles move consumption and advancement
+
       const dirs = _shuffleDirs()
       let moved  = false
       for (const [dx, dy] of dirs) {
@@ -597,6 +804,7 @@ export class Game {
         const ty = uy + dy
         if (tx < 0 || tx >= this.mapWidth || ty < 0 || ty >= this.mapHeight) continue
         if (!this._passable(uid, tx, ty)) continue
+        this._fortifyTurns.delete(uid)
         this._applyMove(uid, tx, ty)
         this.cb.onUnitMoved(uid, ux, uy, tx, ty)
         moved = true
@@ -666,9 +874,19 @@ export class Game {
 
   /** Commit one step, fire callbacks. If the unit has moves left it stays active; otherwise advance. */
   private _executeStep(uid: number, toX: number, toY: number): void {
+    // If an enemy occupies the destination, trigger combat instead of movement
+    const occupantUid = this._unitAt(toX, toY)
+    if (occupantUid >= 0) {
+      this._doAttack(uid, occupantUid)
+      return
+    }
+
     const off = uid * UNIT_STRIDE
     const fx  = this.unitView.getUint16(off + UNIT_X_OFF, true)
     const fy  = this.unitView.getUint16(off + UNIT_Y_OFF, true)
+    // Moving breaks fortification
+    this._fortifyTurns.delete(uid)
+    this._fortifiedUids.delete(uid)
     this._applyMove(uid, toX, toY)
     this.cb.onUnitMoved(uid, fx, fy, toX, toY)
     if (this.unitBytes[off + UNIT_MOVES_OFF] > 0) {
@@ -710,7 +928,15 @@ export class Game {
     return result
   }
 
-  private _passable(uid: number, tx: number, ty: number): boolean {
+  /**
+   * Returns true if `uid` may move to (tx, ty).
+   *
+   * @param forPathfinding  When true, enemy-occupied tiles are treated as
+   *   impassable so A* doesn't path *through* enemy units.  When false
+   *   (normal move/valid-moves check), enemy tiles count as passable if
+   *   the two civs are at war (they are "attackable").
+   */
+  private _passable(uid: number, tx: number, ty: number, forPathfinding = false): boolean {
     const uOff   = uid * UNIT_STRIDE
     const typeId = this.unitBytes[uOff + UNIT_TYPE_OFF] as UnitTypeId
     const naval  = UNIT_MAP.get(typeId)?.isNaval ?? false
@@ -719,11 +945,22 @@ export class Game {
     const terr   = this.tileBytes[tOff + TILE_TERRAIN] as TerrainType
 
     if (naval) {
-      return terr === TerrainType.Ocean || terr === TerrainType.Coast
+      if (terr !== TerrainType.Ocean && terr !== TerrainType.Coast) return false
+    } else {
+      if (terr === TerrainType.Ocean || terr === TerrainType.Coast || terr === TerrainType.Mountain) return false
     }
-    return terr !== TerrainType.Ocean &&
-           terr !== TerrainType.Coast &&
-           terr !== TerrainType.Mountain
+
+    // Check for an occupying unit
+    const occupantUid = this._unitAt(tx, ty)
+    if (occupantUid >= 0) {
+      const unitCiv     = this.unitBytes[uid         * UNIT_STRIDE + UNIT_CIV_OFF]
+      const occupantCiv = this.unitBytes[occupantUid * UNIT_STRIDE + UNIT_CIV_OFF]
+      if (occupantCiv === unitCiv) return false           // friendly — always blocked
+      if (forPathfinding)          return false           // can't path through enemies
+      return this._atWar(unitCiv, occupantCiv)            // enemy: allowed only when at war
+    }
+
+    return true
   }
 
   /**
@@ -742,7 +979,7 @@ export class Game {
     toX:   number, toY:   number,
     uid:   number,
   ): Array<{ x: number; y: number }> | null {
-    if (!this._passable(uid, toX, toY)) return null
+    if (!this._passable(uid, toX, toY, false)) return null
 
     const W      = this.mapWidth
     const key    = (x: number, y: number) => y * W + x
@@ -785,7 +1022,7 @@ export class Game {
         if (nx < 0 || nx >= this.mapWidth || ny < 0 || ny >= this.mapHeight) continue
         const nk = key(nx, ny)
         if (closed.has(nk)) continue
-        if (!this._passable(uid, nx, ny)) continue
+        if (!this._passable(uid, nx, ny, true)) continue
         const g = best.g + 1
         const existing = open.get(nk)
         if (!existing || g < existing.g) {
